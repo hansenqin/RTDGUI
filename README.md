@@ -14,6 +14,6 @@ First modify the ip address of the ROS MASTER in RTD_GUI.m line 18. Launch RTDGU
 |/tf                       | tf2_msgs/TFMessage                      |
 
 # Controls
-w key: move camera up 
+w key: move camera up  
 s key: move camera down 
 

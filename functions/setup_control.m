@@ -25,6 +25,9 @@ function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point
     cb7 = uicheckbox(fig,'Position',[10 148 150 15], 'Text', 'Velocities_Desired', ...
           'ValueChangedFcn',@(cbx,event) cb7Changed(cbx, sub, cb),...
           'Value', 0);
+    cb8 = uibutton(fig,'Position',[10 170 150 15], 'Text', 'Clear', ...
+          'ValueChangedFcn',@(cbx,event) cb8Changed(cbx, sub, cb),...
+          'Value', 0);
 end
 
 function cb1Changed(cbx, sub, cb, u_arrrow_patch, r_arrow_patch)
@@ -162,5 +165,25 @@ function cb7Changed(cbx, sub, cb)
         disp('stopped subscriber for /state_out/rover_debug_state_out');
         sub.sub_velocities_desired = [];
        
+    end
+end
+
+function cb8Changed(cbx, sub, cb)
+    val = cbx.Value;
+    if cbx.Value
+        try
+            sub.sub_initial_point = rossubscriber('/initialpose', @cb.initialPoint_cb, 'DataFormat', 'struct');
+            sub.sub_initial_point.NewMessageFcn = {@cb.initialPoint_cb, initial_point};
+            disp('started subscriber for /initialpose');
+        catch
+            disp('/initialpose topic not detected')
+        end
+        
+    else
+        disp('stopped subscriber for /initialpose');
+        sub.sub_initial_point = [];
+        initial_point.Vertices = [0 0];
+        initial_point.Faces = 1;
+
     end
 end

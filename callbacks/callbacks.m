@@ -10,14 +10,7 @@ classdef callbacks < handle
         rot;
         pos;
         arrows_toggle;
-        
-        u_ax;
-        v_ax;
-        r_ax;
-        
-        u_plot;
-        v_plot;
-        r_plot;
+       
         
         t_list;
         u_list;
@@ -44,28 +37,7 @@ classdef callbacks < handle
             % set up u, v, r, plot
             fig2 = figure(2);
             fig2.Position = [0 500 450 550];
-            obj.u_ax = subplot(3,1,1);
-            title('u')
-            legend('u', 'u_d')
-            obj.v_ax = subplot(3,1,2);
-            title('u')
-            legend('v', 'v_d')
-            obj.r_ax = subplot(3,1,3);
-            title('r')
-            legend('r', 'r_d')
-            
-            obj.u_plot = plot(obj.u_ax, 0,0,'r', 0, 0, 'b');
-            obj.v_plot = plot(obj.v_ax, 0,0,'r', 0, 0, 'b');
-            obj.r_plot = plot(obj.r_ax, 0,0,'r', 0, 0, 'b');
-            
-            
-            obj.ax = ax;
-            
-            xlim(obj.u_ax,[0,10]);
-            xlim(obj.v_ax,[0,10]);
-            xlim(obj.r_ax,[0,10]);
           
-            
             obj.u = u;
             obj.v = v;
             obj.r = r;
@@ -95,26 +67,12 @@ classdef callbacks < handle
             obj.r = msg.Twist.Twist.Angular.Z;
             t = t - obj.t_init;
             
-            if t > 10
-                xlim(obj.u_ax,[t-10,t]);
-                xlim(obj.v_ax,[t-10,t]);
-                xlim(obj.r_ax,[t-10,t]);
-            end
             
             obj.t_list = [obj.t_list, t];
             obj.u_list = [obj.u_list, obj.u];
             obj.v_list = [obj.v_list, obj.v];
             obj.r_list = [obj.r_list, obj.r];
             
-            obj.u_plot(1).XData = obj.t_list;
-            obj.u_plot(1).YData = obj.u_list;
-            
-            obj.v_plot(1).XData = obj.t_list;
-            obj.v_plot(1).YData = obj.v_list;
-            
-            obj.r_plot(1).XData = obj.t_list;
-            obj.r_plot(1).YData = obj.r_list;
-
         end
         
         
@@ -298,14 +256,6 @@ classdef callbacks < handle
             obj.vd_list = [obj.vd_list, vd];
             obj.rd_list = [obj.rd_list, rd];
             
-            obj.u_plot(2).XData = obj.td_list;
-            obj.u_plot(2).YData = obj.ud_list;
-            
-            obj.v_plot(2).XData = obj.td_list;
-            obj.v_plot(2).YData = obj.vd_list;
-            
-            obj.r_plot(2).XData = obj.td_list;
-            obj.r_plot(2).YData = obj.rd_list;
 
         end
         
@@ -333,18 +283,30 @@ classdef callbacks < handle
             camva(7); 
             camlight('headlight');
             
-            obj.u_plot.XData = [];
-            obj.u_plot.YData = [];
-            
-            obj.v_plot.XData = [];
-            obj.v_plot.YData = [];
-            
-            obj.r_plot.XData = [];
-            obj.r_plot.YData = [];
-            
-            xlim(obj.u_ax,[0,10]);
-            xlim(obj.v_ax,[0,10]);
-            xlim(obj.r_ax,[0,10]);
+        end
+        
+        function clear(obj, src, msg, car,vert,u_arrow, r_arrow)
+
+            rot1 = [1 0 0;
+                    0 -1 0;
+                    0 0 -1]; %Initial car rotation
+
+            rot2 = [0 1 0;
+                   -1 0 0;
+                   0 0 1];   %Initial car rotation
+
+            rot = rot1*rot2;
+            pos = [30,18,0.085]; %Initial car position
+
+            vert = car.Vertices;
+            car.Vertices = (rot*vert')' + repmat(pos,[size(vert,1),1]);
+
+            % Camera stuffme†me
+
+            campos(pos-[0,15,-7]);
+            camtarget(pos);
+            camva(7); 
+            camlight('headlight');
             
         end
         

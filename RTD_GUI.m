@@ -15,7 +15,7 @@ clear
 
 %% Connect to ros master 
 try
-    rosinit('http://35.3.93.125:11311/')
+    rosinit('http://192.168.1.7:11311/')
 catch
     disp('Unable to connect to ROS Master')
 end
@@ -23,11 +23,11 @@ end
 %% Scene setup
 fig = figure;
 set(fig,'KeyPressFcn',@keyboard_cb);
-ax = gca;
+ax = axes(fig);
 set(ax, 'XAxisLocation', 'origin', 'YAxisLocation', 'origin');
-hold(ax,'on');
-fig.Position = [800 720 1300 720];
-ax.Visible = 'off';
+hold(ax,'on'); 
+fig.Position = [800 720 1000 720];
+ax.Visible = 'off';  
 ax.Clipping = 'off';
 ax.Projection = 'perspective';
 cam_height = 60;
@@ -45,15 +45,15 @@ material('metal')
 
 
 % Initialize patch object. Patch object are passed by refrence 
-obs = patch(0,0,0, 'm');
-u_arrow = patch(0,0,0,'c');
-v_arrow = patch(0,0,0, 'g');
-r_arrow = patch(0,0,0, [0/255,102/255,0]);
-way_points = patch(0,0,0,[0.7 0 0]);
-initial_point = patch(0,0,0,[0.7,0.7,0.7]);
-goal_point = patch(0,0,0,[0.2,0.2,0.2]);
-obs_zono = patch(0,0,0);
-traversed_path = plot(0,0,'r');
+obs = patch(ax, 0,0,0, 'm');
+u_arrow = patch(ax, 0,0,0,'c');
+v_arrow = patch(ax, 0,0,0, 'g');
+r_arrow = patch(ax, 0,0,0, [0/255,102/255,0]);
+way_points = patch(ax, 0,0,0,[0.7 0 0]);
+initial_point = patch(ax, 0,0,0,[0.7,0.7,0.7]);
+goal_point = patch(ax, 0,0,0,[0.2,0.2,0.2]);
+obs_zono = patch(ax, 0,0,0);
+traversed_path = plot(ax, 0,0,'r');
     
    
 
@@ -86,7 +86,7 @@ pos = [30,18,0.085]; %Initial car position
 vert = car.Vertices;
 car.Vertices = (rot*vert')' + repmat(pos,[size(vert,1),1]);
     
-%% Camera stuff
+% Camera stuffme†me
 
 campos(pos-[0,15,-7]);
 camtarget(pos);
@@ -97,7 +97,7 @@ camlight('headlight');
 %% ROS subscriber functions setup
 
 sub = subscribers;
-cb = callbacks(0,0,0,rot,pos);
+cb = callbacks(0,0,0,rot,pos,ax);
 
 setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point,obs_zono);
 
@@ -106,6 +106,13 @@ setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_po
 sub.sub_tf = rossubscriber('/tf', @cb.tf_cb, 'DataFormat', 'struct');
 sub.sub_tf.NewMessageFcn = {@cb.tf_cb, car,vert, u_arrow, r_arrow};
 disp('started subscriber for /tf');
+
+try
+    sub.sub_tf = rossubscriber('/mocap', @cb.mocap_cb, 'DataFormat', 'struct');
+    sub.sub_tf.NewMessageFcn = {@cb.mocap_cb, car,vert, u_arrow, r_arrow};
+    disp('started subscriber for /mocap');
+end
+    
 
 
 

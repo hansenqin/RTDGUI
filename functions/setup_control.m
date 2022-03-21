@@ -3,7 +3,7 @@
 
 function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point,obs_zono)
 
-    fig = uifigure('Position',[0 120 150 180]);
+    fig = uifigure('Position',[0 70 150 180]);
     cb1 = uicheckbox(fig,'Position',[10 16 150 15], 'Text', 'Velocities', ...
           'ValueChangedFcn',@(cbx,event) cb1Changed(cbx, sub, cb, u_arrow, r_arrow),...
           'Value', 0);
@@ -21,6 +21,9 @@ function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point
           'Value', 0);
     cb6 = uicheckbox(fig,'Position',[10 126 150 15], 'Text', 'Obstacle_Zonotope', ...
           'ValueChangedFcn',@(cbx,event) cb6Changed(cbx, sub, cb, obs_zono),...
+          'Value', 0);
+    cb7 = uicheckbox(fig,'Position',[10 148 150 15], 'Text', 'Velocities_Desired', ...
+          'ValueChangedFcn',@(cbx,event) cb7Changed(cbx, sub, cb),...
           'Value', 0);
 end
 
@@ -135,7 +138,7 @@ function cb6Changed(cbx, sub, cb, obs_zono)
             sub.sub_obstacles_zono.NewMessageFcn = {@cb.obs_zonotope_cb, obs_zono}; 
             disp('started subscriber for /zonotope_visualization');
         catch
-            disp('/zonotope_visualization topic not detectmaed')
+            disp('/zonotope_visualization topic not detected')
         end
     else
         disp('stopped subscriber for /zonotope_visualization');
@@ -143,5 +146,21 @@ function cb6Changed(cbx, sub, cb, obs_zono)
         obs_zono.Vertices = [0 0];
         obs_zono.Faces = 1;
 
+    end
+end
+
+function cb7Changed(cbx, sub, cb)
+    val = cbx.Value;
+    if cbx.Value
+        try
+            sub.sub_velocities_desired = rossubscriber('/state_out/rover_debug_state_out', @cb.debug_cb, 'DataFormat', 'struct');
+            disp('started subscriber for /state_out/rover_debug_state_out');
+        catch
+            disp('/state_out/rover_debug_state_out topic not detected')
+        end
+    else
+        disp('stopped subscriber for /state_out/rover_debug_state_out');
+        sub.sub_velocities_desired = [];
+       
     end
 end

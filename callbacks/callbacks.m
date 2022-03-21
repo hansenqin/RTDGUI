@@ -10,26 +10,111 @@ classdef callbacks < handle
         rot;
         pos;
         arrows_toggle;
+        
+        u_ax;
+        v_ax;
+        r_ax;
+        
+        u_plot;
+        v_plot;
+        r_plot;
+        
+        t_list;
+        u_list;
+        v_list;
+        r_list;
+        td_list;
+        ud_list;
+        vd_list;
+        rd_list;
+       
+        ax;
+        ax2;
+        init;
+        d_init;
+        t_init;
+        td_init;
 
     end
     
     methods
-        function obj = callbacks(u,v,r,rot,pos)
+        %Constructor
+        function obj = callbacks(u,v,r,rot,pos,ax)
+            
+            % set up u, v, r, plot
+            fig2 = figure(2);
+            fig2.Position = [0 500 450 550];
+            obj.u_ax = subplot(3,1,1);
+            title('u')
+            legend('u', 'u_d')
+            obj.v_ax = subplot(3,1,2);
+            title('u')
+            legend('v', 'v_d')
+            obj.r_ax = subplot(3,1,3);
+            title('r')
+            legend('r', 'r_d')
+            
+            obj.u_plot = plot(obj.u_ax, 0,0,'r', 0, 0, 'b');
+            obj.v_plot = plot(obj.v_ax, 0,0,'r', 0, 0, 'b');
+            obj.r_plot = plot(obj.r_ax, 0,0,'r', 0, 0, 'b');
+            
+            
+            obj.ax = ax;
+            
+            xlim(obj.u_ax,[0,10]);
+            xlim(obj.v_ax,[0,10]);
+            xlim(obj.r_ax,[0,10]);
+          
+            
             obj.u = u;
             obj.v = v;
             obj.r = r;
             obj.rot=rot;
             obj.pos=pos;
-            arrows_toggle = 0;
+            obj.arrows_toggle = 0;
+            obj.init = 1;
+            obj.init = 1;
         end
         
         
         function odom_cb(obj, src, msg) 
+            
+            t1 = msg.Header.Stamp.Sec;
+            t1 = cast(t1, 'double');
+            t2 = msg.Header.Stamp.Nsec;
+            t2 = cast(t2, 'double');
+            
+            t = t1+t2/1e9;
+           
+            if obj.init == 1
+                obj.t_init = t;
+                obj.init = 0; 
+            end
             obj.u = msg.Twist.Twist.Linear.X;
             obj.v = msg.Twist.Twist.Linear.Y;
             obj.r = msg.Twist.Twist.Angular.Z;
-    
-     
+            t = t - obj.t_init;
+            
+            if t > 10
+                xlim(obj.u_ax,[t-10,t]);
+                xlim(obj.v_ax,[t-10,t]);
+                xlim(obj.r_ax,[t-10,t]);
+            end
+            
+            obj.t_list = [obj.t_list, t];
+            obj.u_list = [obj.u_list, obj.u];
+            obj.v_list = [obj.v_list, obj.v];
+            obj.r_list = [obj.r_list, obj.r];
+            
+            obj.u_plot(1).XData = obj.t_list;
+            obj.u_plot(1).YData = obj.u_list;
+            
+            obj.v_plot(1).XData = obj.t_list;
+            obj.v_plot(1).YData = obj.v_list;
+            
+            obj.r_plot(1).XData = obj.t_list;
+            obj.r_plot(1).YData = obj.r_list;
+
         end
         
         
@@ -49,10 +134,10 @@ classdef callbacks < handle
 
                 obj.rot = quat2rotm(quat);
                 car.Vertices = (obj.rot'*vert')' + repmat(obj.pos,[size(vert,1),1]);
-                current_campos = campos;
+                current_campos = campos(obj.ax);
                 pos_diff = obj.pos(1:2) - current_campos(1:2);
-                campos(current_campos+[(pos_diff-[0,15]) 0]);
-                camtarget(obj.pos); 
+                campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
+                camtarget(obj.ax, obj.pos); 
                 if obj.arrows_toggle == 1
                     draw_arrows(obj.u, obj.v, obj.r, obj.pos, obj.rot, u_arrow, r_arrow)
                 end
@@ -97,13 +182,21 @@ classdef callbacks < handle
             Polygons = msg.Polygons;
             verts = [];
             num_zono = length(Polygons);
-
+            disp(num_zono)
+            Points = [];
+            
+            T_max = eye(4);
+            T_max(1:3, 1:3) = obj.rot;
+            T_max(1:3, 4) = obj.pos;
+            
             for i = 1:num_zono
 
                 Points = Polygons(i).Polygon.Points;
 
                 for j = 1:length(Points)
-                    verts = [verts;[Points(j).X Points(j).Y, 0.02]];
+                    verts_new = T_max * [Points(j).X; Points(j).Y; 0.02; 1];
+                    
+                    verts = [verts; verts_new(1:3)'];
                 end
 
             end
@@ -135,12 +228,126 @@ classdef callbacks < handle
                 Y = [Y;y_first; y_first; y_last; y_last];
                 Z = [Z;0; 0.1; 0.1; 0 ];
             end
-
+            
+            T_max = eye(4);
+            T_max(1:3, 1:3) = obj.rot;
+            T_max(1:3, 4) = obj.pos;
+            XYZ = T_max * [X';Y';Z';ones(1, length(X))];
+            X = XYZ(1,:)';
+            Y = XYZ(2,:)';
+            Z = XYZ(3,:)';
+            
             obs.Vertices = [X, Y, Z];
+            
+            
             num_points = length(X);
 
             obs.Faces = reshape((1:num_points),4,[])';
         end
+        
+        
+        function mocap_cb(obj, src, msg, car,vert,u_arrow, r_arrow)
+
+            obj.pos = [msg.Pose.Position.X/1000, msg.Pose.Position.Z/1000, 0.085];
+            quat = [msg.Pose.Orientation.X;
+                    msg.Pose.Orientation.Y;
+                    msg.Pose.Orientation.Z; 
+                    msg.Pose.Orientation.W]'; 
+                
+            %rotation matrix returned by mocap is about the Y axis, so we
+            %need to do a change of coordinate (similarity transform) for
+            %the rotation matrix to be about the Z axis 
+            
+            rot1 = [1  0  0;
+                    0  0 -1;
+                    0  1  0]; %Initial car rotation
+
+
+            obj.rot = rot1'*quat2rotm(quat)*rot1; 
+            car.Vertices = (obj.rot'*vert')' + repmat(obj.pos,[size(vert,1),1]);
+            current_campos = campos(obj.ax);
+            pos_diff = obj.pos(1:2) - current_campos(1:2);
+            campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
+            camtarget(obj.ax, obj.pos); 
+            if obj.arrows_toggle == 1
+                draw_arrows(obj.u, obj.v, obj.r, obj.pos, obj.rot, u_arrow, r_arrow)
+            end
+            
+        end
+        
+        function debug_cb(obj, src, msg)
+            t1 = msg.Header.Stamp.Sec;
+            t1 = cast(t1, 'double');
+            t2 = msg.Header.Stamp.Nsec;
+            t2 = cast(t2, 'double');
+            
+            t = t1+t2/1e9;
+           
+            if obj.init == 1
+                obj.td_init = t;
+                obj.d_init = 0; 
+            end
+            
+            td = t-obj.td_init;
+            ud = msg.Ud;
+            vd = msg.Vd;
+            rd = msg.Rd;
+            
+            obj.td_list = [obj.td_list, td];
+            obj.ud_list = [obj.ud_list, ud];
+            obj.vd_list = [obj.vd_list, vd];
+            obj.rd_list = [obj.rd_list, rd];
+            
+            obj.u_plot(2).XData = obj.td_list;
+            obj.u_plot(2).YData = obj.ud_list;
+            
+            obj.v_plot(2).XData = obj.td_list;
+            obj.v_plot(2).YData = obj.vd_list;
+            
+            obj.r_plot(2).XData = obj.td_list;
+            obj.r_plot(2).YData = obj.rd_list;
+
+        end
+        
+        
+        function reset_cb(obj, src, msg, car,vert,u_arrow, r_arrow)
+
+            rot1 = [1 0 0;
+                    0 -1 0;
+                    0 0 -1]; %Initial car rotation
+
+            rot2 = [0 1 0;
+                   -1 0 0;
+                   0 0 1];   %Initial car rotation
+
+            rot = rot1*rot2;
+            pos = [30,18,0.085]; %Initial car position
+
+            vert = car.Vertices;
+            car.Vertices = (rot*vert')' + repmat(pos,[size(vert,1),1]);
+
+            % Camera stuffme†me
+
+            campos(pos-[0,15,-7]);
+            camtarget(pos);
+            camva(7); 
+            camlight('headlight');
+            
+            obj.u_plot.XData = [];
+            obj.u_plot.YData = [];
+            
+            obj.v_plot.XData = [];
+            obj.v_plot.YData = [];
+            
+            obj.r_plot.XData = [];
+            obj.r_plot.YData = [];
+            
+            xlim(obj.u_ax,[0,10]);
+            xlim(obj.v_ax,[0,10]);
+            xlim(obj.r_ax,[0,10]);
+            
+        end
+        
     end
 end
  

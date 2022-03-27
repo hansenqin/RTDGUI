@@ -1,4 +1,5 @@
-.DS_Store
+*.DS_Store
 callbacks/fig.jpg
 callbacks/prediction_demo.mp4
 prediction_demo.mp4
+*.mp4

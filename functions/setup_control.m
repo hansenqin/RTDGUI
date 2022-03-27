@@ -1,9 +1,11 @@
 
+
+
 %A series of functions for handling turning subscribers on and off
 
 function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point,obs_zono)
 
-    fig = uifigure('Position',[0 70 150 180]);
+    fig = uifigure('Position',[0 70 200 210]);
     cb1 = uicheckbox(fig,'Position',[10 16 150 15], 'Text', 'Velocities', ...
           'ValueChangedFcn',@(cbx,event) cb1Changed(cbx, sub, cb, u_arrow, r_arrow),...
           'Value', 0);
@@ -11,10 +13,10 @@ function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point
           'ValueChangedFcn',@(cbx,event) cb2Changed(cbx, sub, cb, obs),...
           'Value', 0);
     cb3 = uicheckbox(fig,'Position',[10 60 91 15], 'Text', 'Waypoints', ...
-          'ValueChangedFcn',@(cbx,event) cb3Changed(cbx, sub, cb, way_points),...
+          'ValueChangedFcn',@(cbx,event) cb3Changed(cbx, sub, cb),...
           'Value', 0);
-    cb4 = uicheckbox(fig,'Position',[10 82 91 15], 'Text', 'Initial_Points', ...
-          'ValueChangedFcn',@(cbx,event) cb4Changed(cbx, sub, cb, initial_point),...
+    cb4 = uicheckbox(fig,'Position',[10 82 200 15], 'Text', 'Local_Frame_Obstacles', ...
+          'ValueChangedFcn',@(cbx,event) cb4Changed(cbx, sub, cb),...
           'Value', 0);
     cb5 = uicheckbox(fig,'Position',[10 104 91 15], 'Text', 'Goal_Point', ...
           'ValueChangedFcn',@(cbx,event) cb5Changed(cbx, sub, cb, goal_point),...
@@ -22,11 +24,14 @@ function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point
     cb6 = uicheckbox(fig,'Position',[10 126 150 15], 'Text', 'Obstacle_Zonotope', ...
           'ValueChangedFcn',@(cbx,event) cb6Changed(cbx, sub, cb, obs_zono),...
           'Value', 0);
-    cb7 = uicheckbox(fig,'Position',[10 148 150 15], 'Text', 'Velocities_Desired', ...
-          'ValueChangedFcn',@(cbx,event) cb7Changed(cbx, sub, cb),...
+    cb7 = uicheckbox(fig,'Position',[10 148 150 15], 'Text', 'Record', ...
+          'ValueChangedFcn',@(cbx,event) cb7Changed(cbx,cb),...
           'Value', 0);
-    cb8 = uibutton(fig,'Position',[10 170 150 15], 'Text', 'Clear', ...
-          'ValueChangedFcn',@(cbx,event) cb8Changed(cbx, sub, cb),...
+    cb8 = uicheckbox(fig,'Position',[10 170 150 15], 'Text', 'First-Person Camera', ...
+          'ValueChangedFcn',@(cbx,event) cb8Changed(cbx,cb),...
+          'Value', 0);
+    cb9 = uicheckbox(fig,'Position',[10 192 150 15], 'Text', 'Sliced Zonotopes', ...
+          'ValueChangedFcn',@(cbx,event) cb9Changed(cbx,sub,cb),...
           'Value', 0);
 end
 
@@ -74,41 +79,66 @@ function cb2Changed(cbx, sub, cb, obs)
     end
 end
 
-function cb3Changed(cbx, sub, cb, way_points)
-    val = cbx.Value;
+function cb3Changed(cbx, sub, cb)
     if cbx.Value
-        try
-            sub.sub_waypoints = rossubscriber('/sPath', @cb.path_cb, 'DataFormat', 'struct');
-            sub.sub_waypoints.NewMessageFcn = {@cb.path_cb, way_points};
-            disp('started subscriber for /sPath');    
+        try   
+            sub.sub_waypoints = rossubscriber('/matlab_plot_info', 'rover_control_msgs/MatlabPlotInfo', @(pub, msg) cb.plot_cb(msg));
+            disp('started subscriber for /matlab_plot_info');    
         catch
-            disp('/sPath topic not detected')
+            disp('/matlab_plot_info')
         end
     else
-        disp('stopped subscriber for /sPath');    
         sub.sub_waypoints = [];
-        way_points.Vertices = [0 0];
-        way_points.Faces = 1;
-
+        disp('stopped subscriber for /matlab_plot_info');    
+        
+        for i=1:length(cb.p_0)
+            cb.p_0(i).XData = [];
+            cb.p_0(i).YData = [];
+        end
+        
+        for i=1:length(cb.p_0)
+            cb.p_pred(i).XData = [];
+            cb.p_pred(i).YData = [];
+        end
+        
+        for i=1:length(cb.p_0)
+            cb.p_wp(i).XData = [];
+            cb.p_wp(i).YData = [];
+        end
+        
+        for i=1:length(cb.path_list)
+            cb.path_list(i).XData = [];
+            cb.path_list(i).YData = [];
+        end
+        cb.p_0 = [];
+        cb.p_pred = [];
+        cb.p_wp = [];
+        cb.path_list = [];
+        cb.plot_legend.Visible = 'off';
     end
 end
 
-function cb4Changed(cbx, sub, cb, initial_point)
-    val = cbx.Value;
+function cb4Changed(cbx, sub, cb)
     if cbx.Value
         try
-            sub.sub_initial_point = rossubscriber('/initialpose', @cb.initialPoint_cb, 'DataFormat', 'struct');
-            sub.sub_initial_point.NewMessageFcn = {@cb.initialPoint_cb, initial_point};
-            disp('started subscriber for /initialpose');
+            sub.sub_obstacles_zono = rossubscriber('/local_obstacles_center',@cb.plot_local_obs_cb, 'DataFormat', 'struct');
+            cb.local_mode = 1;
+            disp('started subscriber for /local_obstacles_center');
         catch
-            disp('/initialpose topic not detected')
+            disp('/global_obstacles topic not detected')
+        end
+    else
+        disp('stopped subscriber for /local_obstacles_centers');
+        
+        num = length(cb.local_obs);
+        for i=1:num
+            cb.local_obs(i).XData = [];
+            cb.local_obs(i).YData = [];
         end
         
-    else
-        disp('stopped subscriber for /initialpose');
-        sub.sub_initial_point = [];
-        initial_point.Vertices = [0 0];
-        initial_point.Faces = 1;
+        cb.local_mode = 0;
+        cb.local_obs = [];
+        sub.sub_obstacles_local = [];
 
     end
 end
@@ -152,38 +182,58 @@ function cb6Changed(cbx, sub, cb, obs_zono)
     end
 end
 
-function cb7Changed(cbx, sub, cb)
-    val = cbx.Value;
+
+function cb7Changed(cbx, cb)
     if cbx.Value
         try
-            sub.sub_velocities_desired = rossubscriber('/state_out/rover_debug_state_out', @cb.debug_cb, 'DataFormat', 'struct');
-            disp('started subscriber for /state_out/rover_debug_state_out');
+            cb.recorder =  VideoWriter('curr_recording', 'MPEG-4'); % New
+            cb.recorder.FrameRate = 5;
+            cb.recorder.Quality = 100;
+            open(cb.recorder);
+            
+            disp('started recording');
+            
+            while(1)
+                frame = getframe(gcf);
+                writeVideo(cb.recorder,frame);
+            end
         catch
-            disp('/state_out/rover_debug_state_out topic not detected')
+            disp('cannot start recording')
         end
     else
-        disp('stopped subscriber for /state_out/rover_debug_state_out');
-        sub.sub_velocities_desired = [];
-       
+        disp('stopped recording');
+        close(cb.recorder);
+        cb.recorder = 0;
     end
 end
 
-function cb8Changed(cbx, sub, cb)
-    val = cbx.Value;
+
+function cb8Changed(cbx, cb)
     if cbx.Value
-        try
-            sub.sub_initial_point = rossubscriber('/initialpose', @cb.initialPoint_cb, 'DataFormat', 'struct');
-            sub.sub_initial_point.NewMessageFcn = {@cb.initialPoint_cb, initial_point};
-            disp('started subscriber for /initialpose');
+        disp('Starting first person camera view');
+        cb.FP_cam = 1;
+    else
+        disp('stopped recording');
+        cb.FP_cam = 0;
+    end
+end
+
+
+function cb9Changed(cbx, sub, cb)
+     if cbx.Value
+        try   
+            sub.sub_zonotopes = rossubscriber('/matlab_plot_info', 'rover_control_msgs/MatlabPlotInfo', @(pub, msg) cb.frs_cb(msg));
+            disp('started subscriber for /matlab_plot_info');    
         catch
-            disp('/initialpose topic not detected')
+            disp('/matlab_plot_info')
         end
+    else
+        sub.sub_zonotopes = [];
+        disp('stopped subscriber for /matlab_plot_info');    
         
-    else
-        disp('stopped subscriber for /initialpose');
-        sub.sub_initial_point = [];
-        initial_point.Vertices = [0 0];
-        initial_point.Faces = 1;
-
+        cb.frs_list.XData = [];
+        cb.frs_list.YData = [];
     end
 end
+
+

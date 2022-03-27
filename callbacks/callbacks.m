@@ -27,6 +27,29 @@ classdef callbacks < handle
         d_init;
         t_init;
         td_init;
+        
+        %MATLAB visulization message stuff
+        p_0;
+        p_pred;
+        p_wp;
+        path_list;
+        plot_legend;
+        
+        %Video recording
+        recorder;
+        
+        %Local frame mode
+        local_mode;
+        local_obs;
+        
+        %First-Person Camera mode
+        FP_cam;
+        
+        %FRS
+        frs_file;
+        frs_low_file;
+        frs_list;
+        
 
     end
     
@@ -34,10 +57,7 @@ classdef callbacks < handle
         %Constructor
         function obj = callbacks(u,v,r,rot,pos,ax)
             
-            % set up u, v, r, plot
-            fig2 = figure(2);
-            fig2.Position = [0 500 450 550];
-          
+            % set up u, v, r, plot          
             obj.u = u;
             obj.v = v;
             obj.r = r;
@@ -46,6 +66,13 @@ classdef callbacks < handle
             obj.arrows_toggle = 0;
             obj.init = 1;
             obj.init = 1;
+            obj.FP_cam = 0;
+            
+            obj.ax = ax;
+            obj.local_mode = 0;
+            obj.frs_file = load('FRS_Rover_19-Dec-2021_no_force.mat');
+            obj.frs_low_file = load('FRS_Rover_04-Jan-2022_low_spd.mat');
+            
         end
         
         
@@ -79,23 +106,39 @@ classdef callbacks < handle
         function tf_cb(obj, src, msg, car,vert,u_arrow, r_arrow)
             FrameID = msg.Transforms.Header.FrameId;
             ChildFrameId = msg.Transforms.ChildFrameId;
-            
+           
             if FrameID == "map" && ChildFrameId == "base_link"
                 translation = msg.Transforms.Transform.Translation; 
                 rotatation = msg.Transforms.Transform.Rotation; 
-
-                obj.pos = [translation.X, translation.Y, 0.085];
-                quat = [rotatation.W;
+                
+                if obj.local_mode == 1
+                    obj.pos = [0, 0, 0.085];
+                    obj.rot(1:2, 1:2) = [0, -1;1 0];
+                else
+                    obj.pos = [translation.X, translation.Y, 0.085];
+                    quat = [rotatation.W;
                         rotatation.X;
                         rotatation.Y; 
-                        rotatation.Z]'; 
-
-                obj.rot = quat2rotm(quat);
+                        rotatation.Z]';
+                    obj.rot = quat2rotm(quat); 
+                end
+                
                 car.Vertices = (obj.rot'*vert')' + repmat(obj.pos,[size(vert,1),1]);
                 current_campos = campos(obj.ax);
-                pos_diff = obj.pos(1:2) - current_campos(1:2);
-                campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
+                
+                if obj.FP_cam == 1
+                    FP_cam_pos = obj.pos(1:2)' - obj.rot(1:2, 1:2)*[0;20];
+                    campos(obj.ax, [FP_cam_pos', 15]);
+                    
+                else
+                    pos_diff = obj.pos(1:2) - current_campos(1:2);
+                    campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
+                end
+                
                 camtarget(obj.ax, obj.pos); 
+
+                
+                
                 if obj.arrows_toggle == 1
                     draw_arrows(obj.u, obj.v, obj.r, obj.pos, obj.rot, u_arrow, r_arrow)
                 end
@@ -140,20 +183,19 @@ classdef callbacks < handle
             Polygons = msg.Polygons;
             verts = [];
             num_zono = length(Polygons);
-            disp(num_zono)
             Points = [];
             
             T_max = eye(4);
-            T_max(1:3, 1:3) = obj.rot;
-            T_max(1:3, 4) = obj.pos;
-            
+%             T_max(1:3, 1:3) = obj.rot
+%             T_max(1:3, 4) = obj.pos;
+%             
             for i = 1:num_zono
 
                 Points = Polygons(i).Polygon.Points;
 
                 for j = 1:length(Points)
-                    verts_new = T_max * [Points(j).X; Points(j).Y; 0.02; 1];
-                    
+                    verts_new = T_max * [Points(j).X; Points(j).Y; 0.0; 1];
+                    verts_new(3) = 0.05;
                     verts = [verts; verts_new(1:3)'];
                 end
 
@@ -167,6 +209,36 @@ classdef callbacks < handle
             obs_zono.Faces = reshape((1:num_zono*length(Points)),4,[])';
 
         end
+        
+        
+        function obs_zonotope_global_cb(obj, src, msg, obs_zono)
+            Polygons = msg.Polygons;
+            verts = [];
+            num_zono = length(Polygons);
+            disp(num_zono)
+            Points = [];
+            
+            for i = 1:num_zono
+
+                Points = Polygons(i).Polygon.Points;
+
+                for j = 1:length(Points)
+                    verts_new = [Points(j).X; Points(j).Y; 0.0; 1];
+                    verts_new(3) = 0.05;
+                    verts = [verts; verts_new(1:3)'];
+                end
+
+            end
+            clear('Polygons')
+            obs_zono.Vertices = verts;
+
+            % Faces are matrices that specify which vetex connects to which. A new
+            % line means a new group of vertex. 
+            
+            obs_zono.Faces = reshape((1:num_zono*length(Points)),4,[])';
+
+        end
+        
         
         function obstacle_seg_cb(obj,src,msg, obs)
             seg = msg.Segments;
@@ -184,7 +256,7 @@ classdef callbacks < handle
 
                 X = [X;x_first; x_first; x_last; x_last];
                 Y = [Y;y_first; y_first; y_last; y_last];
-                Z = [Z;0; 0.1; 0.1; 0 ];
+                Z = [Z;0; 0.4; 0.4; 0 ];
             end
             
             T_max = eye(4);
@@ -193,7 +265,7 @@ classdef callbacks < handle
             XYZ = T_max * [X';Y';Z';ones(1, length(X))];
             X = XYZ(1,:)';
             Y = XYZ(2,:)';
-            Z = XYZ(3,:)';
+%             Z = XYZ(3,:)';
             
             obs.Vertices = [X, Y, Z];
             
@@ -232,84 +304,86 @@ classdef callbacks < handle
             end
             
         end
+ 
+        function plot_local_obs_cb(obj,src, msg)
+            num = length(obj.local_obs);
         
-        function debug_cb(obj, src, msg)
-            t1 = msg.Header.Stamp.Sec;
-            t1 = cast(t1, 'double');
-            t2 = msg.Header.Stamp.Nsec;
-            t2 = cast(t2, 'double');
-            
-            t = t1+t2/1e9;
-           
-            if obj.init == 1
-                obj.td_init = t;
-                obj.d_init = 0; 
+            for i=1:num
+                obj.local_obs(i).XData = [];
+                obj.local_obs(i).YData = [];
             end
             
-            td = t-obj.td_init;
-            ud = msg.Ud;
-            vd = msg.Vd;
-            rd = msg.Rd;
             
-            obj.td_list = [obj.td_list, td];
-            obj.ud_list = [obj.ud_list, ud];
-            obj.vd_list = [obj.vd_list, vd];
-            obj.rd_list = [obj.rd_list, rd];
+            i = 1;
+            while i <= length(msg.Data)-1
+                obj.local_obs = [obj.local_obs, circle([msg.Data(i), msg.Data(i+1)], 0.2, 1000,'--')];
+            i = i+2;
+            end
             
-
-        end
-        
-        
-        function reset_cb(obj, src, msg, car,vert,u_arrow, r_arrow)
-
-            rot1 = [1 0 0;
-                    0 -1 0;
-                    0 0 -1]; %Initial car rotation
-
-            rot2 = [0 1 0;
-                   -1 0 0;
-                   0 0 1];   %Initial car rotation
-
-            rot = rot1*rot2;
-            pos = [30,18,0.085]; %Initial car position
-
-            vert = car.Vertices;
-            car.Vertices = (rot*vert')' + repmat(pos,[size(vert,1),1]);
-
-            % Camera stuffme†me
-
-            campos(pos-[0,15,-7]);
-            camtarget(pos);
-            camva(7); 
-            camlight('headlight');
+            disp(["Predicted h is: ", msg.Data(i-1)]);
             
         end
         
-        function clear(obj, src, msg, car,vert,u_arrow, r_arrow)
+        function plot_cb(obj, msg)
 
-            rot1 = [1 0 0;
-                    0 -1 0;
-                    0 0 -1]; %Initial car rotation
+            state_0 = [msg.X0; msg.Y0; msg.H0; msg.U0; msg.V0; msg.R0];
+            state_pred = [msg.PredX; msg.PredY; msg.PredH; ...
+                          msg.PredU; msg.PredV; msg.PredR];
+            waypoint_state = [msg.WpX; msg.WpY; msg.WpH];
+            path_msg_tmp = msg.FullRobPath;
 
-            rot2 = [0 1 0;
-                   -1 0 0;
-                   0 0 1];   %Initial car rotation
+            obj.p_0.XData = [];
+            obj.p_0.YData = [];
 
-            rot = rot1*rot2;
-            pos = [30,18,0.085]; %Initial car position
+            obj.p_pred.XData = [];
+            obj.p_pred.YData = [];
 
-            vert = car.Vertices;
-            car.Vertices = (rot*vert')' + repmat(pos,[size(vert,1),1]);
+            obj.p_wp.XData = [];
+            obj.p_wp.YData = [];
 
-            % Camera stuffme†me
-
-            campos(pos-[0,15,-7]);
-            camtarget(pos);
-            camva(7); 
-            camlight('headlight');
+            obj.p_0 = plot_state(state_0, 'r', 'x_0');
+            obj.p_pred = plot_state(state_pred, 'b', 'Predicted');
+            obj.p_wp = plot_state(waypoint_state, 'g', 'Waypoint');
             
+            disp(["waypoint x is: ", waypoint_state(1)]);
+            disp(["waypoint y is: ", waypoint_state(2)]);
+            disp(["waypoint h is: ", waypoint_state(3)]);
+            
+
+            rob_path = path_msg_tmp; % msg.FullRobPath;
+
+            num_path_pts = length(rob_path.Poses);
+            path_pts = zeros(2, num_path_pts);
+            for i = 1:num_path_pts
+                pos_i = rob_path.Poses(i).Pose.Position;
+                path_pts(:, i) = [pos_i.X; pos_i.Y];
+            end
+            obj.path_list = [obj.path_list, plot(path_pts(1,:), path_pts(2,:), 'k--', 'LineWidth', 2, 'DisplayName', 'Path')];
+            obj.plot_legend = legend([obj.p_0(1), obj.p_pred(1), obj.p_wp(1)], 'x_0', 'Predicted', 'Waypoint');
+            set(gca,'fontsize', 25)
         end
         
+        
+        function frs_cb(obj, msg)
+
+            state_pred = [msg.PredX; msg.PredY; msg.PredH; ...
+                          msg.PredU; msg.PredV; msg.PredR];
+            frs_indices = [msg.U0Idx, msg.Idx0, msg.Idx1];
+            k_param = msg.KParam;
+            uvrk = [state_pred(4:6); k_param];
+            if msg.IsLow
+                frs_to_use = obj.frs_low_file;
+            else
+                frs_to_use = obj.frs_file;
+            end
+            for i=1:length(obj.frs_list)
+                obj.frs_list(i).XData = [];
+                obj.frs_list(i).YData = [];
+            end
+
+            obj.frs_list = plot_sliced_frs(frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk);
+        end
+
     end
 end
  

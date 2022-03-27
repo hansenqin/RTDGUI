@@ -2,7 +2,7 @@
 %Author: Hansen Qin
 %Email: qinh@umich.edu
 %Created: 8/16/2021
-%Modified: 8/16/2021
+%Modified: 3/26/2022
 %
 %Purpose: Visualize real time ROS data for the rover. Including obstacle
 %         zonotopes, goal point, initial point, waypoint, obstacle line segments,
@@ -15,9 +15,11 @@ clear
 
 %% Connect to ros master 
 try
-    rosinit('http://192.168.1.7:11311/')
+%     rosinit('http://192.168.1.7:11311/')
+    rosinit
 catch
-    disp('Unable to connect to ROS Master')
+    disp('Unable to connect to ROS Master, starting master on local machine')
+    rosinit
 end
 
 %% Scene setup
@@ -26,7 +28,7 @@ set(fig,'KeyPressFcn',@keyboard_cb);
 ax = axes(fig);
 set(ax, 'XAxisLocation', 'origin', 'YAxisLocation', 'origin');
 hold(ax,'on'); 
-fig.Position = [800 720 1000 720];
+fig.Position = [800 420 1300 720];
 ax.Visible = 'off';  
 ax.Clipping = 'off';
 ax.Projection = 'perspective';
@@ -88,7 +90,7 @@ car.Vertices = (rot*vert')' + repmat(pos,[size(vert,1),1]);
     
 % Camera stuffme†me
 
-campos(pos-[0,15,-7]);
+campos(pos-[0,15,-47]);
 camtarget(pos);
 camva(7); 
 camlight('headlight');

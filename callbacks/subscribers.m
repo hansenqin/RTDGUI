@@ -11,8 +11,10 @@ classdef subscribers < handle
         sub_initial_point;
         sub_goal_point;
         sub_obstacles_zono;
+        sub_obstacles_local;
         sub_tf;
         sub_mocap;
-        sub_velocities_desired; 
+        sub_velocities_desired;
+        sub_zonotopes;
     end
 end

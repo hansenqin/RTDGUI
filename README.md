@@ -1,7 +1,7 @@
 
 # Usage Instructions
 
-First modify the ip address of the ROS MASTER in RTD_GUI.m line 18. The GUI now should be ready to visualize data. Use the checkbox window to control the desired data to be visualized. Currently, supported topics along with their types are:
+First modify the ip address of the ROS MASTER in RTD_GUI.m line 18. Launch RTDGUI.m and the GUI now should be ready to visualize data. Use the checkbox window to control the desired data to be visualized. Currently, supported topics along with their types are:
 
 |Topic                     |Types                                    |
 | :----------------------- |-----------------:                       |
@@ -14,6 +14,6 @@ First modify the ip address of the ROS MASTER in RTD_GUI.m line 18. The GUI now 
 |/tf                       | tf2_msgs/TFMessage                      |
 
 # Controls
-w key: move camera up
+w key: move camera up  
 s key: move camera down 
 

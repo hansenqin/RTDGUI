@@ -15,11 +15,10 @@ clear
 
 %% Connect to ros master 
 try
-%     rosinit('http://192.168.1.7:11311/')
-    rosinit
+    rosinit('http://192.168.1.7:11311/')
+%     rosinit
 catch
     disp('Unable to connect to ROS Master, starting master on local machine')
-    rosinit
 end
 
 %% Scene setup

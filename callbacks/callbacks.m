@@ -354,11 +354,17 @@ classdef callbacks < handle
 
             num_path_pts = length(rob_path.Poses);
             path_pts = zeros(2, num_path_pts);
+            
+            for i=1:length(obj.path_list)
+                obj.path_list(i).XData = [];
+                obj.path_list(i).YData = [];
+            end
+            
             for i = 1:num_path_pts
                 pos_i = rob_path.Poses(i).Pose.Position;
                 path_pts(:, i) = [pos_i.X; pos_i.Y];
             end
-            obj.path_list = [obj.path_list, plot(path_pts(1,:), path_pts(2,:), 'k--', 'LineWidth', 2, 'DisplayName', 'Path')];
+            obj.path_list = plot(path_pts(1,:), path_pts(2,:), 'k--', 'LineWidth', 2, 'DisplayName', 'Path');
             obj.plot_legend = legend([obj.p_0(1), obj.p_pred(1), obj.p_wp(1)], 'x_0', 'Predicted', 'Waypoint');
             set(gca,'fontsize', 25)
         end

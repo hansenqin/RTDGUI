@@ -4,6 +4,8 @@ classdef callbacks < handle
     %variables 
     
     properties
+        x;
+        y;
         u;
         v;
         r;
@@ -34,6 +36,7 @@ classdef callbacks < handle
         p_wp;
         path_list;
         plot_legend;
+        curr_pos_and_predicted_pos_toggle;
         
         %Video recording
         recorder;
@@ -49,6 +52,14 @@ classdef callbacks < handle
         frs_file;
         frs_low_file;
         frs_list;
+        queue;
+        
+        %Traveled path
+        traveled_path;
+        traveled_path_toggle;
+        
+        
+      
         
 
     end
@@ -67,11 +78,14 @@ classdef callbacks < handle
             obj.init = 1;
             obj.init = 1;
             obj.FP_cam = 0;
+            obj.traveled_path_toggle = 0;
             
             obj.ax = ax;
             obj.local_mode = 0;
             obj.frs_file = load('FRS_Rover_19-Dec-2021_no_force.mat');
             obj.frs_low_file = load('FRS_Rover_04-Jan-2022_low_spd.mat');
+            queue = {};
+
             
         end
         
@@ -103,13 +117,15 @@ classdef callbacks < handle
         end
         
         
-        function tf_cb(obj, src, msg, car,vert,u_arrow, r_arrow)
+        function tf_cb(obj, src, msg, car,vert,u_arrow, r_arrow, traversed_path)
             FrameID = msg.Transforms.Header.FrameId;
             ChildFrameId = msg.Transforms.ChildFrameId;
            
             if FrameID == "map" && ChildFrameId == "base_link"
                 translation = msg.Transforms.Transform.Translation; 
                 rotatation = msg.Transforms.Transform.Rotation; 
+                obj.x = translation.X;
+                ibj.y = translation.Y;
                 
                 if obj.local_mode == 1
                     obj.pos = [0, 0, 0.085];
@@ -126,13 +142,19 @@ classdef callbacks < handle
                 car.Vertices = (obj.rot'*vert')' + repmat(obj.pos,[size(vert,1),1]);
                 current_campos = campos(obj.ax);
                 
+                % camera angle
                 if obj.FP_cam == 1
                     FP_cam_pos = obj.pos(1:2)' - obj.rot(1:2, 1:2)*[0;20];
                     campos(obj.ax, [FP_cam_pos', 15]);
-                    
                 else
                     pos_diff = obj.pos(1:2) - current_campos(1:2);
                     campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
+                end
+                
+                % Traveled path
+                if obj.traveled_path_toggle
+                    traversed_path.XData(end+1) = translation.X;
+                    traversed_path.YData(end+1) = translation.Y;
                 end
                 
                 camtarget(obj.ax, obj.pos); 
@@ -332,24 +354,23 @@ classdef callbacks < handle
             waypoint_state = [msg.WpX; msg.WpY; msg.WpH];
             path_msg_tmp = msg.FullRobPath;
 
-            obj.p_0.XData = [];
-            obj.p_0.YData = [];
+            
+            if obj.curr_pos_and_predicted_pos_toggle
+                obj.p_0.XData = [];
+                obj.p_0.YData = [];
 
-            obj.p_pred.XData = [];
-            obj.p_pred.YData = [];
+                obj.p_pred.XData = [];
+                obj.p_pred.YData = [];
 
+                obj.p_0 = plot_state(state_0, 'r', 'x_0');
+                obj.p_pred = plot_state(state_pred, 'b', 'Predicted');
+            end
+            
             obj.p_wp.XData = [];
             obj.p_wp.YData = [];
-
-            obj.p_0 = plot_state(state_0, 'r', 'x_0');
-            obj.p_pred = plot_state(state_pred, 'b', 'Predicted');
             obj.p_wp = plot_state(waypoint_state, 'g', 'Waypoint');
             
-            disp(["waypoint x is: ", waypoint_state(1)]);
-            disp(["waypoint y is: ", waypoint_state(2)]);
-            disp(["waypoint h is: ", waypoint_state(3)]);
-            
-
+            %curr executing path
             rob_path = path_msg_tmp; % msg.FullRobPath;
 
             num_path_pts = length(rob_path.Poses);
@@ -365,13 +386,19 @@ classdef callbacks < handle
                 path_pts(:, i) = [pos_i.X; pos_i.Y];
             end
             obj.path_list = plot(path_pts(1,:), path_pts(2,:), 'k--', 'LineWidth', 2, 'DisplayName', 'Path');
-            obj.plot_legend = legend([obj.p_0(1), obj.p_pred(1), obj.p_wp(1)], 'x_0', 'Predicted', 'Waypoint');
+            
+            
+            %legends
+            if obj.curr_pos_and_predicted_pos_toggle
+                obj.plot_legend = legend([obj.p_0(1), obj.p_pred(1), obj.p_wp(1)], 'x_0', 'Predicted', 'Waypoint');
+            else
+                obj.plot_legend = legend(obj.p_wp(1), 'Waypoint');
+            end
             set(gca,'fontsize', 25)
         end
         
         
         function frs_cb(obj, msg)
-
             state_pred = [msg.PredX; msg.PredY; msg.PredH; ...
                           msg.PredU; msg.PredV; msg.PredR];
             frs_indices = [msg.U0Idx, msg.Idx0, msg.Idx1];
@@ -382,12 +409,19 @@ classdef callbacks < handle
             else
                 frs_to_use = obj.frs_file;
             end
-            for i=1:length(obj.frs_list)
-                obj.frs_list(i).XData = [];
-                obj.frs_list(i).YData = [];
+            try
+                delete(obj.frs_list)
             end
-
+               
+%             obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk}];
+%             if length(obj.queue(:,1)) > 1
+%                 delete(obj.frs_list);
+%                 curr_frs_info = obj.queue(1,:);
+%                 obj.frs_list = plot_sliced_frs(curr_frs_info{1}, curr_frs_info{2}, curr_frs_info{3}, curr_frs_info{4}, curr_frs_info{5});
+%                 obj.queue(1,:) = [];
+%             end
             obj.frs_list = plot_sliced_frs(frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk);
+            
         end
 
     end

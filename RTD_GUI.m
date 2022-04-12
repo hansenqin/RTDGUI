@@ -16,7 +16,7 @@ clear
 %% Connect to ros master 
 try
     rosinit('http://192.168.1.7:11311/')
-%     rosinit
+%     rosinit('http://192.168.1.2:11311/')
 catch
     disp('Unable to connect to ROS Master, starting master on local machine')
 end
@@ -45,7 +45,7 @@ material('metal')
 
 
 
-% Initialize patch object. Patch object are passed by refrence 
+% Initialize patch and plot object. Patch object are passed by refrence 
 obs = patch(ax, 0,0,0, 'm');
 u_arrow = patch(ax, 0,0,0,'c');
 v_arrow = patch(ax, 0,0,0, 'g');
@@ -53,8 +53,8 @@ r_arrow = patch(ax, 0,0,0, [0/255,102/255,0]);
 way_points = patch(ax, 0,0,0,[0.7 0 0]);
 initial_point = patch(ax, 0,0,0,[0.7,0.7,0.7]);
 goal_point = patch(ax, 0,0,0,[0.2,0.2,0.2]);
-obs_zono = patch(ax, 0,0,0);
-traversed_path = plot(ax, 0,0,'r');
+obs_zono = patch(ax, 0,0,0, 'm');
+traversed_path = plot(ax, 0,0, 'b', 'LineWidth', 8);
     
    
 
@@ -100,12 +100,12 @@ camlight('headlight');
 sub = subscribers;
 cb = callbacks(0,0,0,rot,pos,ax);
 
-setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point,obs_zono);
+setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point, obs_zono, traversed_path);
 
 % TF topic will be set up by default, all other topics must be turned on
 % manuallyu
 sub.sub_tf = rossubscriber('/tf', @cb.tf_cb, 'DataFormat', 'struct');
-sub.sub_tf.NewMessageFcn = {@cb.tf_cb, car,vert, u_arrow, r_arrow};
+sub.sub_tf.NewMessageFcn = {@cb.tf_cb, car, vert, u_arrow, r_arrow, traversed_path};
 disp('started subscriber for /tf');
 
 try

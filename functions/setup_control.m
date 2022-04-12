@@ -3,13 +3,13 @@
 
 %A series of functions for handling turning subscribers on and off
 
-function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point,obs_zono)
+function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point, obs_zono, traversed_path)
 
-    fig = uifigure('Position',[0 70 200 210]);
+    fig = uifigure('Position',[0 70 200 270]);
     cb1 = uicheckbox(fig,'Position',[10 16 150 15], 'Text', 'Velocities', ...
           'ValueChangedFcn',@(cbx,event) cb1Changed(cbx, sub, cb, u_arrow, r_arrow),...
           'Value', 0);
-    cb2 = uicheckbox(fig,'Position',[10 38 150 15], 'Text', 'Obstacles_LineSeg', ...
+    cb2 = uicheckbox(fig,'Position',[10 104 150 15], 'Text', 'Obstacles_LineSeg', ...
           'ValueChangedFcn',@(cbx,event) cb2Changed(cbx, sub, cb, obs),...
           'Value', 0);
     cb3 = uicheckbox(fig,'Position',[10 60 91 15], 'Text', 'Waypoints', ...
@@ -18,7 +18,7 @@ function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point
     cb4 = uicheckbox(fig,'Position',[10 82 200 15], 'Text', 'Local_Frame_Obstacles', ...
           'ValueChangedFcn',@(cbx,event) cb4Changed(cbx, sub, cb),...
           'Value', 0);
-    cb5 = uicheckbox(fig,'Position',[10 104 91 15], 'Text', 'Goal_Point', ...
+    cb5 = uicheckbox(fig,'Position',[10 236 91 15], 'Text', 'Goal_Point', ...
           'ValueChangedFcn',@(cbx,event) cb5Changed(cbx, sub, cb, goal_point),...
           'Value', 0);
     cb6 = uicheckbox(fig,'Position',[10 126 150 15], 'Text', 'Obstacle_Zonotope', ...
@@ -32,6 +32,12 @@ function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point
           'Value', 0);
     cb9 = uicheckbox(fig,'Position',[10 192 150 15], 'Text', 'Sliced Zonotopes', ...
           'ValueChangedFcn',@(cbx,event) cb9Changed(cbx,sub,cb),...
+          'Value', 0);
+    cb10 = uicheckbox(fig,'Position',[10 214 150 15], 'Text', 'Path Traveled', ...
+          'ValueChangedFcn',@(cbx,event) cb10Changed(cbx,sub,cb,traversed_path),...
+          'Value', 0);
+    cb11 = uicheckbox(fig,'Position',[20 38 150 15], 'Text', 'CurrPos & PredictedPos', ...
+          'ValueChangedFcn',@(cbx,event) cb11Changed(cbx,sub,cb),...
           'Value', 0);
 end
 
@@ -91,29 +97,15 @@ function cb3Changed(cbx, sub, cb)
         sub.sub_waypoints = [];
         disp('stopped subscriber for /matlab_plot_info');    
         
-        for i=1:length(cb.p_0)
-            cb.p_0(i).XData = [];
-            cb.p_0(i).YData = [];
-        end
+        obj.p_0.XData = [];
+        obj.p_0.YData = [];
+
+        obj.p_pred.XData = [];
+        obj.p_pred.YData = [];
         
-        for i=1:length(cb.p_0)
-            cb.p_pred(i).XData = [];
-            cb.p_pred(i).YData = [];
-        end
+        obj.p_wp.XData = [];
+        obj.p_wp.YData = [];
         
-        for i=1:length(cb.p_0)
-            cb.p_wp(i).XData = [];
-            cb.p_wp(i).YData = [];
-        end
-        
-        for i=1:length(cb.path_list)
-            cb.path_list(i).XData = [];
-            cb.path_list(i).YData = [];
-        end
-        cb.p_0 = [];
-        cb.p_pred = [];
-        cb.p_wp = [];
-        cb.path_list = [];
         cb.plot_legend.Visible = 'off';
     end
 end
@@ -178,6 +170,7 @@ function cb6Changed(cbx, sub, cb, obs_zono)
         sub.sub_obstacles_zono = [];
         obs_zono.Vertices = [0 0];
         obs_zono.Faces = 1;
+        delete(cb.frs_list)
 
     end
 end
@@ -214,6 +207,9 @@ function cb8Changed(cbx, cb)
         cb.FP_cam = 1;
     else
         disp('stopped recording');
+        current_campos = campos(cb.ax);
+        
+        campos(cb.ax, [current_campos(1:2), 47]);
         cb.FP_cam = 0;
     end
 end
@@ -233,6 +229,34 @@ function cb9Changed(cbx, sub, cb)
         
         cb.frs_list.XData = [];
         cb.frs_list.YData = [];
+    end
+end
+
+function cb10Changed(cbx, sub, cb, traversed_path)
+     if cbx.Value
+        traversed_path.XData = []; 
+        traversed_path.YData = [];
+        cb.traveled_path_toggle = 1;
+        disp('Started displaying traveled path');    
+     else 
+        cb.traveled_path_toggle = 0;
+        traversed_path.XData = []; 
+        traversed_path.YData = []; 
+        disp('Stopped displaying traveled path');    
+    end
+end
+
+function cb11Changed(cbx, sub, cb)
+     if cbx.Value
+        cb.curr_pos_and_predicted_pos_toggle = 1;
+     else 
+        cb.p_0.XData = [];
+        cb.p_0.YData = [];
+
+        cb.p_pred.XData = [];
+        cb.p_pred.YData = [];
+        
+        cb.curr_pos_and_predicted_pos_toggle = 0;
     end
 end
 

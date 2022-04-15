@@ -57,7 +57,7 @@ classdef callbacks < handle
         %Traveled path
         traveled_path;
         traveled_path_toggle;
-        
+        auto_flag;
         
       
         
@@ -81,6 +81,7 @@ classdef callbacks < handle
             obj.traveled_path_toggle = 0;
             
             obj.ax = ax;
+            obj.auto_flag = 1;
             obj.local_mode = 0;
             obj.frs_file = load('FRS_Rover_19-Dec-2021_no_force.mat');
             obj.frs_low_file = load('FRS_Rover_04-Jan-2022_low_spd.mat');
@@ -152,7 +153,7 @@ classdef callbacks < handle
                 end
                 
                 % Traveled path
-                if obj.traveled_path_toggle
+                if obj.traveled_path_toggle && obj.auto_flag
                     traversed_path.XData(end+1) = translation.X;
                     traversed_path.YData(end+1) = translation.Y;
                 end
@@ -421,6 +422,12 @@ classdef callbacks < handle
 %                 obj.queue(1,:) = [];
 %             end
             obj.frs_list = plot_sliced_frs(frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk);
+            
+        end
+        
+        
+        function auto_flag_cb(obj, msg)
+            obj.auto_flag = msg.RunningAuto;
             
         end
 

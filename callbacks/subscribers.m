@@ -16,5 +16,6 @@ classdef subscribers < handle
         sub_mocap;
         sub_velocities_desired;
         sub_zonotopes;
+        sub_auto_flag;
     end
 end

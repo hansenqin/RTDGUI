@@ -234,6 +234,7 @@ end
 
 function cb10Changed(cbx, sub, cb, traversed_path)
      if cbx.Value
+%         sub.sub_zonotopes = rossubscriber('/state_out/rover_debug_state_out', 'rover_control_msgs/RoverDebugStateStamped', @(pub, msg) cb.auto_flag_cb(msg));
         traversed_path.XData = []; 
         traversed_path.YData = [];
         cb.traveled_path_toggle = 1;

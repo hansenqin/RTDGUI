@@ -15,8 +15,8 @@ clear
 
 %% Connect to ros master 
 try
-    rosinit('http://192.168.1.7:11311/')
-%     rosinit('http://192.168.1.2:11311/')
+%     rosinit('http://192.168.1.7:11311/')
+    rosinit('http://192.168.1.2:11311/')
 catch
     disp('Unable to connect to ROS Master, starting master on local machine')
 end

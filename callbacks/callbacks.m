@@ -108,7 +108,7 @@ classdef callbacks < handle
             obj.v = msg.Twist.Twist.Linear.Y;
             obj.r = msg.Twist.Twist.Angular.Z;
             t = t - obj.t_init;
-            
+            disp(["u is: ", obj.u]);
             
             obj.t_list = [obj.t_list, t];
             obj.u_list = [obj.u_list, obj.u];
@@ -146,7 +146,7 @@ classdef callbacks < handle
                 % camera angle
                 if obj.FP_cam == 1
                     FP_cam_pos = obj.pos(1:2)' - obj.rot(1:2, 1:2)*[0;20];
-                    campos(obj.ax, [FP_cam_pos', 15]);
+                    campos(obj.ax, [FP_cam_pos', 10]);
                 else
                     pos_diff = obj.pos(1:2) - current_campos(1:2);
                     campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
@@ -414,14 +414,14 @@ classdef callbacks < handle
                 delete(obj.frs_list)
             end
                
-%             obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk}];
-%             if length(obj.queue(:,1)) > 1
-%                 delete(obj.frs_list);
-%                 curr_frs_info = obj.queue(1,:);
-%                 obj.frs_list = plot_sliced_frs(curr_frs_info{1}, curr_frs_info{2}, curr_frs_info{3}, curr_frs_info{4}, curr_frs_info{5});
-%                 obj.queue(1,:) = [];
-%             end
-            obj.frs_list = plot_sliced_frs(frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk);
+            obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk}];
+            if length(obj.queue(:,1)) > 1
+                delete(obj.frs_list);
+                curr_frs_info = obj.queue(1,:);
+                obj.frs_list = plot_sliced_frs(curr_frs_info{1}, curr_frs_info{2}, curr_frs_info{3}, curr_frs_info{4}, curr_frs_info{5});
+                obj.queue(1,:) = [];
+            end
+%             obj.frs_list = plot_sliced_frs(frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk);
             
         end
         

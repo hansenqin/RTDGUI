@@ -6,13 +6,16 @@ classdef callbacks < handle
     properties
         x;
         y;
+        h;
         u;
         v;
         r;
         rot;
         pos;
         arrows_toggle;
-       
+        
+        %For delaying tf message to sync up with 
+        msg_queue = [];
         
         t_list;
         u_list;
@@ -59,6 +62,8 @@ classdef callbacks < handle
         traveled_path_toggle;
         auto_flag;
         
+        %debug
+        debug_counter;
       
         
 
@@ -79,6 +84,7 @@ classdef callbacks < handle
             obj.init = 1;
             obj.FP_cam = 0;
             obj.traveled_path_toggle = 0;
+            obj.debug_counter = 0;
             
             obj.ax = ax;
             obj.auto_flag = 1;
@@ -119,18 +125,22 @@ classdef callbacks < handle
         
         
         function tf_cb(obj, src, msg, car,vert,u_arrow, r_arrow, traversed_path)
+            
             FrameID = msg.Transforms.Header.FrameId;
             ChildFrameId = msg.Transforms.ChildFrameId;
-           
+
             if FrameID == "map" && ChildFrameId == "base_link"
                 translation = msg.Transforms.Transform.Translation; 
                 rotatation = msg.Transforms.Transform.Rotation; 
                 obj.x = translation.X;
-                ibj.y = translation.Y;
-                
+                obj.y = translation.Y;
+
+
                 if obj.local_mode == 1
                     obj.pos = [0, 0, 0.085];
                     obj.rot(1:2, 1:2) = [0, -1;1 0];
+                    obj.h = rotm2eul(obj.rot);
+                    obj.h = obj.h(1);
                 else
                     obj.pos = [translation.X, translation.Y, 0.085];
                     quat = [rotatation.W;
@@ -138,11 +148,13 @@ classdef callbacks < handle
                         rotatation.Y; 
                         rotatation.Z]';
                     obj.rot = quat2rotm(quat); 
+                    obj.h = rotm2eul(obj.rot);
+                    obj.h = obj.h(1)-pi/2;
                 end
-                
+
                 car.Vertices = (obj.rot'*vert')' + repmat(obj.pos,[size(vert,1),1]);
                 current_campos = campos(obj.ax);
-                
+
                 % camera angle
                 if obj.FP_cam == 1
                     FP_cam_pos = obj.pos(1:2)' - obj.rot(1:2, 1:2)*[0;20];
@@ -151,22 +163,24 @@ classdef callbacks < handle
                     pos_diff = obj.pos(1:2) - current_campos(1:2);
                     campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
                 end
-                
+
                 % Traveled path
                 if obj.traveled_path_toggle && obj.auto_flag
                     traversed_path.XData(end+1) = translation.X;
                     traversed_path.YData(end+1) = translation.Y;
                 end
-                
+
                 camtarget(obj.ax, obj.pos); 
 
-                
-                
+
+
                 if obj.arrows_toggle == 1
                     draw_arrows(obj.u, obj.v, obj.r, obj.pos, obj.rot, u_arrow, r_arrow)
                 end
-              
+
             end 
+            
+            
  
         end
         
@@ -192,10 +206,13 @@ classdef callbacks < handle
         
         
         function goal_cb(obj, src, msg, goal_point)
-            X = msg.Pose.Position.X;
-            Y = msg.Pose.Position.Y;
+%             X = msg.Pose.Position.X;
+%             Y = msg.Pose.Position.Y;
 
-            [vert,faces] = gen_points(X,Y);
+            X = msg.Point.X;
+            Y = msg.Point.Y;
+            
+            [vert,faces] = gen_rect_points(X,Y);
 
             goal_point.Vertices = vert;
             goal_point.Faces = faces;
@@ -347,13 +364,13 @@ classdef callbacks < handle
             
         end
         
-        function plot_cb(obj, msg)
+        function plot_cb(obj, msg, way_points)
 
             state_0 = [msg.X0; msg.Y0; msg.H0; msg.U0; msg.V0; msg.R0];
             state_pred = [msg.PredX; msg.PredY; msg.PredH; ...
                           msg.PredU; msg.PredV; msg.PredR];
             waypoint_state = [msg.WpX; msg.WpY; msg.WpH];
-            path_msg_tmp = msg.FullRobPath;
+%             path_msg_tmp = msg.FullRobPath;
 
             
             if obj.curr_pos_and_predicted_pos_toggle
@@ -369,32 +386,40 @@ classdef callbacks < handle
             
             obj.p_wp.XData = [];
             obj.p_wp.YData = [];
-            obj.p_wp = plot_state(waypoint_state, 'g', 'Waypoint');
-            
-            %curr executing path
-            rob_path = path_msg_tmp; % msg.FullRobPath;
+            obj.p_wp = plot_state(waypoint_state, 'r', 'Waypoint');
+%             
+%             X = msg.Pose.Position.X;
+%             Y = msg.Pose.Position.Y;
 
-            num_path_pts = length(rob_path.Poses);
-            path_pts = zeros(2, num_path_pts);
+%             [vert,faces] = get_cross_points(msg.WpX,msg.WpY);
+% 
+%             way_points.Vertices = vert;
+%             way_points.Faces = faces;
             
-            for i=1:length(obj.path_list)
-                obj.path_list(i).XData = [];
-                obj.path_list(i).YData = [];
-            end
-            
-            for i = 1:num_path_pts
-                pos_i = rob_path.Poses(i).Pose.Position;
-                path_pts(:, i) = [pos_i.X; pos_i.Y];
-            end
-            obj.path_list = plot(path_pts(1,:), path_pts(2,:), 'k--', 'LineWidth', 2, 'DisplayName', 'Path');
-            
+%             %curr executing path
+%             rob_path = path_msg_tmp; % msg.FullRobPath;
+% 
+%             num_path_pts = length(rob_path.Poses);
+%             path_pts = zeros(2, num_path_pts);
+%             
+%             for i=1:length(obj.path_list)
+%                 obj.path_list(i).XData = [];
+%                 obj.path_list(i).YData = [];
+%             end
+%             
+%             for i = 1:num_path_pts
+%                 pos_i = rob_path.Poses(i).Pose.Position;
+%                 path_pts(:, i) = [pos_i.X; pos_i.Y];
+%             end
+%             obj.path_list = plot(path_pts(1,:), path_pts(2,:), 'k--', 'LineWidth', 2, 'DisplayName', 'Path');
+%             
             
             %legends
-            if obj.curr_pos_and_predicted_pos_toggle
-                obj.plot_legend = legend([obj.p_0(1), obj.p_pred(1), obj.p_wp(1)], 'x_0', 'Predicted', 'Waypoint');
-            else
-                obj.plot_legend = legend(obj.p_wp(1), 'Waypoint');
-            end
+%             if obj.curr_pos_and_predicted_pos_toggle
+%                 obj.plot_legend = legend([obj.p_0(1), obj.p_pred(1), obj.p_wp(1)], 'x_0', 'Predicted', 'Waypoint');
+%             else
+%                 obj.plot_legend = legend(obj.p_wp(1), 'Waypoint');
+%             end
             set(gca,'fontsize', 25)
         end
         
@@ -403,8 +428,24 @@ classdef callbacks < handle
             state_pred = [msg.PredX; msg.PredY; msg.PredH; ...
                           msg.PredU; msg.PredV; msg.PredR];
             frs_indices = [msg.U0Idx, msg.Idx0, msg.Idx1];
+            obj.debug_counter = obj.debug_counter+1;
+            obj.debug_counter
             k_param = msg.KParam;
-            uvrk = [state_pred(4:6); k_param];
+%             if(obj.debug_counter == 8)
+%                 k_param = -k_param;
+%             end
+            
+%             uvrk = [state_pred(4:6); k_param];
+%             uvrk = [obj.u;obj.v;obj.r;k_param];
+%             if obj.debug_counter > 12
+%                  pause(1)
+%             end
+%             
+            if obj.debug_counter <3
+                 frs_indices(1) = 6;
+            end
+            
+            state_pred = [obj.x; obj.y; obj.h; obj.u; obj.v; obj.r];
             if msg.IsLow
                 frs_to_use = obj.frs_low_file;
             else
@@ -414,14 +455,15 @@ classdef callbacks < handle
                 delete(obj.frs_list)
             end
                
-            obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk}];
+            obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, k_param}];
             if length(obj.queue(:,1)) > 1
                 delete(obj.frs_list);
                 curr_frs_info = obj.queue(1,:);
-                obj.frs_list = plot_sliced_frs(curr_frs_info{1}, curr_frs_info{2}, curr_frs_info{3}, curr_frs_info{4}, curr_frs_info{5});
-                obj.queue(1,:) = [];
+                uvrk = [obj.u;obj.v;obj.r;curr_frs_info{4}];
+                obj.frs_list = plot_sliced_frs(curr_frs_info{1}, curr_frs_info{2}, curr_frs_info{3}, state_pred, uvrk);
+                obj.queue(1,:) = []; 
             end
-%             obj.frs_list = plot_sliced_frs(frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk);
+%              obj.frs_list = plot_sliced_frs(frs_to_use, msg.ManuType, frs_indices, state_pred, uvrk);
             
         end
         

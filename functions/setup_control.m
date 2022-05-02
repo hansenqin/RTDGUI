@@ -13,7 +13,7 @@ function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point
           'ValueChangedFcn',@(cbx,event) cb2Changed(cbx, sub, cb, obs),...
           'Value', 0);
     cb3 = uicheckbox(fig,'Position',[10 60 91 15], 'Text', 'Waypoints', ...
-          'ValueChangedFcn',@(cbx,event) cb3Changed(cbx, sub, cb),...
+          'ValueChangedFcn',@(cbx,event) cb3Changed(cbx, sub, cb, way_points),...
           'Value', 0);
     cb4 = uicheckbox(fig,'Position',[10 82 200 15], 'Text', 'Local_Frame_Obstacles', ...
           'ValueChangedFcn',@(cbx,event) cb4Changed(cbx, sub, cb),...
@@ -85,10 +85,10 @@ function cb2Changed(cbx, sub, cb, obs)
     end
 end
 
-function cb3Changed(cbx, sub, cb)
+function cb3Changed(cbx, sub, cb, goal_point)
     if cbx.Value
         try   
-            sub.sub_waypoints = rossubscriber('/matlab_plot_info', 'rover_control_msgs/MatlabPlotInfo', @(pub, msg) cb.plot_cb(msg));
+            sub.sub_waypoints = rossubscriber('/matlab_plot_info', 'rover_control_msgs/MatlabPlotInfo', @(pub, msg) cb.plot_cb(msg, goal_point));
             disp('started subscriber for /matlab_plot_info');    
         catch
             disp('/matlab_plot_info')
@@ -139,15 +139,16 @@ function cb5Changed(cbx, sub, cb, goal_point)
     val = cbx.Value;
     if cbx.Value
         try
-            sub.sub_goal_point = rossubscriber('/move_base_simple/goal', @cb.goal_cb, 'DataFormat', 'struct');
+%             sub.sub_goal_point = rossubscriber('/move_base_simple/goal', @cb.goal_cb, 'DataFormat', 'struct');
+            sub.sub_goal_point = rossubscriber('/clicked_point', @cb.goal_cb, 'DataFormat', 'struct');
             sub.sub_goal_point.NewMessageFcn = {@cb.goal_cb, goal_point}; 
-            disp('started subscriber for /move_base_simple/goal');
+            disp('started subscriber for /clicked_point');
         catch
             disp('/move_base_simple/goal topic not detected')
         end
         
     else
-        disp('stopped subscriber for /move_base_simple/goal');
+        disp('stopped subscriber for /clicked_point');
         sub.sub_goal_point = [];
         goal_point.Vertices = [0 0];
         goal_point.Faces = 1;
@@ -180,7 +181,7 @@ function cb7Changed(cbx, cb)
     if cbx.Value
         try
             cb.recorder =  VideoWriter('curr_recording', 'MPEG-4'); % New
-            cb.recorder.FrameRate = 5;
+            cb.recorder.FrameRate = 30;
             cb.recorder.Quality = 100;
             open(cb.recorder);
             
@@ -189,6 +190,7 @@ function cb7Changed(cbx, cb)
             while(1)
                 frame = getframe(gcf);
                 writeVideo(cb.recorder,frame);
+                pause(0.01)
             end
         catch
             disp('cannot start recording')
@@ -217,6 +219,8 @@ end
 
 function cb9Changed(cbx, sub, cb)
      if cbx.Value
+        cb.queue = [];
+        cb.debug_counter = 0;
         try   
             sub.sub_zonotopes = rossubscriber('/matlab_plot_info', 'rover_control_msgs/MatlabPlotInfo', @(pub, msg) cb.frs_cb(msg));
             disp('started subscriber for /matlab_plot_info');    
@@ -226,7 +230,7 @@ function cb9Changed(cbx, sub, cb)
     else
         sub.sub_zonotopes = [];
         disp('stopped subscriber for /matlab_plot_info');    
-        
+        cb.queue = [];
         cb.frs_list.XData = [];
         cb.frs_list.YData = [];
     end

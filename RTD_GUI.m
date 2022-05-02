@@ -37,7 +37,7 @@ axis([-100 100 -100 100 -100 100])
 %% Add the stl and prepare patches
 car_stl = stlread('car_scaled.stl');
 cone = stlread('cone.stl');
-car = patch(ax, car_stl,'FaceColor',     [0/255,102/255,1], ...
+car = patch(ax, car_stl,'FaceColor',     [60/255,60/255,60/255], ...
          'EdgeColor',       'none',        ...
          'FaceLighting',    'gouraud',     ...
          'AmbientStrength', 0.15);
@@ -50,11 +50,11 @@ obs = patch(ax, 0,0,0, 'm');
 u_arrow = patch(ax, 0,0,0,'c');
 v_arrow = patch(ax, 0,0,0, 'g');
 r_arrow = patch(ax, 0,0,0, [0/255,102/255,0]);
-way_points = patch(ax, 0,0,0,[0.7 0 0]);
+way_points = patch(ax, 0,0,0,[0 0 0]);
 initial_point = patch(ax, 0,0,0,[0.7,0.7,0.7]);
-goal_point = patch(ax, 0,0,0,[0.2,0.2,0.2]);
+goal_point = patch(ax, 0,0,0,'r');
 obs_zono = patch(ax, 0,0,0, 'm');
-traversed_path = plot(ax, 0,0, 'b', 'LineWidth', 8);
+traversed_path = plot(ax, 0,0, 'k', 'LineWidth', 8);
     
    
 
@@ -62,6 +62,7 @@ traversed_path = plot(ax, 0,0, 'b', 'LineWidth', 8);
 ground = 1000*ones(100,100)-1000;
 groundSurf = surf(linspace(-70,70,size(ground,1)),linspace(-70,70,size(ground,2)),ground);
 groundSurf.FaceColor = [1,1,1];
+set(groundSurf, 'edgecolor', 'none')
 % texture = imread('Mcity.png');
 %     texture = imread('Reduced_Resolution_Map.bmp');
 %     textureSize = size(texture);
@@ -82,7 +83,7 @@ rot2 = [0 1 0;
        0 0 1];   %Initial car rotation
 
 rot = rot1*rot2;
-pos = [30,18,0.085]; %Initial car position
+pos = [0,0,0.085]; %Initial car position
 
 vert = car.Vertices;
 car.Vertices = (rot*vert')' + repmat(pos,[size(vert,1),1]);

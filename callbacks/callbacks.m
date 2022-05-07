@@ -451,9 +451,9 @@ classdef callbacks < handle
             else
                 frs_to_use = obj.frs_file;
             end
-            try
-                delete(obj.frs_list)
-            end
+%             try
+%                 delete(obj.frs_list)
+%             end
                
             obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, k_param}];
             if length(obj.queue(:,1)) > 1

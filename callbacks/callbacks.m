@@ -224,7 +224,7 @@ classdef callbacks < handle
             verts = [];
             num_zono = length(Polygons);
             Points = [];
-            
+             
             T_max = eye(4);
 %             T_max(1:3, 1:3) = obj.rot
 %             T_max(1:3, 4) = obj.pos;
@@ -384,17 +384,22 @@ classdef callbacks < handle
                 obj.p_pred = plot_state(state_pred, 'b', 'Predicted');
             end
             
-            obj.p_wp.XData = [];
-            obj.p_wp.YData = [];
-            obj.p_wp = plot_state(waypoint_state, 'r', 'Waypoint');
+%             obj.p_wp.XData = [];
+%             obj.p_wp.YData = [];
+%             obj.p_wp = plot_state(waypoint_state, 'r', 'Waypoint');
 %             
 %             X = msg.Pose.Position.X;
 %             Y = msg.Pose.Position.Y;
 
-%             [vert,faces] = get_cross_points(msg.WpX,msg.WpY);
-% 
-%             way_points.Vertices = vert;
-%             way_points.Faces = faces;
+            if(obj.debug_counter > 7)
+                msg.WpX = msg.WpX + 0.5;
+            end
+
+            [vert,faces] = get_cross_points(msg.WpX,msg.WpY);
+
+            way_points.Vertices = vert;
+            way_points.Faces = faces;
+
             
 %             %curr executing path
 %             rob_path = path_msg_tmp; % msg.FullRobPath;
@@ -427,13 +432,10 @@ classdef callbacks < handle
         function frs_cb(obj, msg)
             state_pred = [msg.PredX; msg.PredY; msg.PredH; ...
                           msg.PredU; msg.PredV; msg.PredR];
-            frs_indices = [msg.U0Idx, msg.Idx0, msg.Idx1];
+            frs_indices = [msg.U0Idx, msg.Idx0, msg.Idx1]
             obj.debug_counter = obj.debug_counter+1;
             obj.debug_counter
-            k_param = msg.KParam;
-%             if(obj.debug_counter == 8)
-%                 k_param = -k_param;
-%             end
+            k_param = msg.KParam
             
 %             uvrk = [state_pred(4:6); k_param];
 %             uvrk = [obj.u;obj.v;obj.r;k_param];
@@ -451,9 +453,16 @@ classdef callbacks < handle
             else
                 frs_to_use = obj.frs_file;
             end
-%             try
-%                 delete(obj.frs_list)
-%             end
+            if(obj.debug_counter == 8)
+                k_param = msg.KParam-10.5;
+                frs_indices(1) = 2;
+            end
+            
+            if(obj.debug_counter == 9)
+                k_param = -1;
+                frs_indices(1) = 1;
+            end
+
                
             obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, k_param}];
             if length(obj.queue(:,1)) > 1

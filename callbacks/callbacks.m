@@ -40,6 +40,8 @@ classdef callbacks < handle
         path_list;
         plot_legend;
         curr_pos_and_predicted_pos_toggle;
+        box_region_X;
+        box_region_Y;
         
         %Video recording
         recorder;
@@ -64,9 +66,12 @@ classdef callbacks < handle
         
         %debug
         debug_counter;
+        
+        %marking boxes
+        obs_zono_box;
+        mark_box_toggle;
       
         
-
     end
     
     methods
@@ -92,6 +97,11 @@ classdef callbacks < handle
             obj.frs_file = load('FRS_Rover_19-Dec-2021_no_force.mat');
             obj.frs_low_file = load('FRS_Rover_04-Jan-2022_low_spd.mat');
             queue = {};
+            
+            obj.mark_box_toggle = 0;
+            obj.box_region_X = [0,0];
+            obj.box_region_Y = [0,0];
+            
 
             
         end
@@ -171,7 +181,13 @@ classdef callbacks < handle
                 end
 
                 camtarget(obj.ax, obj.pos); 
+                
+                %box drawing 
+                if obj.mark_box_toggle  
 
+                    obj.ax2.XLim = [obj.x-10, obj.x+10];
+                    obj.ax2.YLim = [obj.y-10, obj.y+10];  
+                end
 
 
                 if obj.arrows_toggle == 1
@@ -219,9 +235,10 @@ classdef callbacks < handle
         end
         
         
-        function obs_zonotope_cb(obj, src, msg, obs_zono)
+        function obs_zonotope_cb(obj, src, msg, obs_zono, obs_zono_box)
             Polygons = msg.Polygons;
             verts = [];
+            obs_verts = [];
             num_zono = length(Polygons);
             Points = [];
              
@@ -230,52 +247,50 @@ classdef callbacks < handle
 %             T_max(1:3, 4) = obj.pos;
 %             
             for i = 1:num_zono
-
+                
                 Points = Polygons(i).Polygon.Points;
+                add_to_box_obs = false;
 
                 for j = 1:length(Points)
                     verts_new = T_max * [Points(j).X; Points(j).Y; 0.0; 1];
                     verts_new(3) = 0.05;
-                    verts = [verts; verts_new(1:3)'];
+                    verts = [verts; verts_new(1:3)']; 
+
+                    
+                    if any(verts_new(1)>obj.box_region_X(:,1) & verts_new(1)<obj.box_region_X(:,2) &...
+                       verts_new(2)>obj.box_region_Y(:,1) & verts_new(2)<obj.box_region_Y(:,2))
+                        add_to_box_obs = 1;
+                    end
+                end
+                
+                if add_to_box_obs
+                    for j = 1:length(Points)
+                        verts_new = T_max * [Points(j).X; Points(j).Y; 0.0; 1];
+                        verts_new(3) = 0.05;
+                        obs_verts = [obs_verts; verts_new(1:3)'];
+                        
+
+                    end
                 end
 
             end
             clear('Polygons')
-            obs_zono.Vertices = verts;
-
+            
             % Faces are matrices that specify which vetex connects to which. A new
             % line means a new group of vertex. 
-            
+            obs_zono.Vertices = verts; 
             obs_zono.Faces = reshape((1:num_zono*length(Points)),4,[])';
-
-        end
-        
-        
-        function obs_zonotope_global_cb(obj, src, msg, obs_zono)
-            Polygons = msg.Polygons;
-            verts = [];
-            num_zono = length(Polygons);
-            disp(num_zono)
-            Points = [];
             
-            for i = 1:num_zono
-
-                Points = Polygons(i).Polygon.Points;
-
-                for j = 1:length(Points)
-                    verts_new = [Points(j).X; Points(j).Y; 0.0; 1];
-                    verts_new(3) = 0.05;
-                    verts = [verts; verts_new(1:3)'];
-                end
-
+            if obj.mark_box_toggle
+                obj.obs_zono_box.Vertices = verts; 
+                obj.obs_zono_box.Faces = reshape((1:num_zono*length(Points)),4,[])';
             end
-            clear('Polygons')
-            obs_zono.Vertices = verts;
-
-            % Faces are matrices that specify which vetex connects to which. A new
-            % line means a new group of vertex. 
             
-            obs_zono.Faces = reshape((1:num_zono*length(Points)),4,[])';
+            
+            if size(obs_verts,1) >0
+                obs_zono_box.Vertices = obs_verts; 
+                obs_zono_box.Faces = reshape(1:size(obs_verts,1),4,[])';
+            end
 
         end
         
@@ -392,6 +407,7 @@ classdef callbacks < handle
 %             Y = msg.Pose.Position.Y;
 
             if(obj.debug_counter > 7)
+                %vid 1
                 msg.WpX = msg.WpX + 0.5;
             end
 
@@ -476,6 +492,15 @@ classdef callbacks < handle
             
         end
         
+        function select_boxes(obj)
+            figure(2)
+            [x_,y_] = ginput(2);
+            x_ = sort(x_);
+            y_ = sort(y_);
+            
+            obj.box_region_X = [obj.box_region_X; x_'];
+            obj.box_region_Y = [obj.box_region_Y; y_'];
+        end
         
         function auto_flag_cb(obj, msg)
             obj.auto_flag = msg.RunningAuto;

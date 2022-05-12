@@ -3,9 +3,9 @@
 
 %A series of functions for handling turning subscribers on and off
 
-function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point, obs_zono, traversed_path)
+function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point, obs_zono, traversed_path, obs_zono_box)
 
-    fig = uifigure('Position',[0 70 200 270]);
+    fig = uifigure('Position',[0 70 200 310]);
     cb1 = uicheckbox(fig,'Position',[10 16 150 15], 'Text', 'Velocities', ...
           'ValueChangedFcn',@(cbx,event) cb1Changed(cbx, sub, cb, u_arrow, r_arrow),...
           'Value', 0);
@@ -22,7 +22,7 @@ function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point
           'ValueChangedFcn',@(cbx,event) cb5Changed(cbx, sub, cb, goal_point),...
           'Value', 0);
     cb6 = uicheckbox(fig,'Position',[10 126 150 15], 'Text', 'Obstacle_Zonotope', ...
-          'ValueChangedFcn',@(cbx,event) cb6Changed(cbx, sub, cb, obs_zono),...
+          'ValueChangedFcn',@(cbx,event) cb6Changed(cbx, sub, cb, obs_zono, obs_zono_box),...
           'Value', 0);
     cb7 = uicheckbox(fig,'Position',[10 148 150 15], 'Text', 'Record', ...
           'ValueChangedFcn',@(cbx,event) cb7Changed(cbx,cb),...
@@ -39,6 +39,10 @@ function setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point
     cb11 = uicheckbox(fig,'Position',[20 38 150 15], 'Text', 'CurrPos & PredictedPos', ...
           'ValueChangedFcn',@(cbx,event) cb11Changed(cbx,sub,cb),...
           'Value', 0);
+    cb12 = uicheckbox(fig,'Position',[20 258 150 15], 'Text', 'Mark boxes', ...
+          'ValueChangedFcn',@(cbx,event) cb12Changed(cbx,sub,cb),...
+          'Value', 0);
+    cb13 = uibutton(fig,'Position',[10 285 150 22], 'Text', 'Box Selection Mode','ButtonPushedFcn',@(cbx,event) cb13Changed(cbx,sub,cb));
 end
 
 function cb1Changed(cbx, sub, cb, u_arrrow_patch, r_arrow_patch)
@@ -156,12 +160,12 @@ function cb5Changed(cbx, sub, cb, goal_point)
     end
 end
 
-function cb6Changed(cbx, sub, cb, obs_zono)
+function cb6Changed(cbx, sub, cb, obs_zono, obs_zono_box)
     val = cbx.Value;
     if cbx.Value
         try
             sub.sub_obstacles_zono = rossubscriber('/zonotope_visualization', @cb.obs_zonotope_cb, 'DataFormat', 'struct');
-            sub.sub_obstacles_zono.NewMessageFcn = {@cb.obs_zonotope_cb, obs_zono}; 
+            sub.sub_obstacles_zono.NewMessageFcn = {@cb.obs_zonotope_cb, obs_zono, obs_zono_box}; 
             disp('started subscriber for /zonotope_visualization');
         catch
             disp('/zonotope_visualization topic not detected')
@@ -263,6 +267,27 @@ function cb11Changed(cbx, sub, cb)
         
         cb.curr_pos_and_predicted_pos_toggle = 0;
     end
+end
+
+function cb12Changed(cbx, sub, cb)
+     if cbx.Value
+        fig2 = figure(2);
+        cb.ax2 = axes(fig2);
+        cb.obs_zono_box = patch(cb.ax2, 0,0,0, 'p');
+        cb.mark_box_toggle = 1;
+        
+        
+     else 
+        delete(cb.obs_zono_box);
+        delete(cd.ax2);
+        delete(cb.obs_zono_box);
+        close(figure(2));
+        cb.mark_box_toggle = 0;
+    end
+end
+
+function cb13Changed(cbx, sub, cb)
+     cb.select_boxes();
 end
 
 

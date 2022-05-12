@@ -14,9 +14,10 @@ clear
 
 
 %% Connect to ros master 
+
 try
-    rosinit('http://10.0.0.72:11311/')
-%     rosinit('http://192.168.1.2:11311/')
+%     rosinit('http://10.0.0.72:11311/')
+    rosinit('http://192.168.1.2:11311/')
 catch
     disp('Unable to connect to ROS Master, starting master on local machine')
 end
@@ -54,6 +55,7 @@ way_points = patch(ax, 0,0,0,[0 0 0]);
 initial_point = patch(ax, 0,0,0,[0.7,0.7,0.7]);
 goal_point = patch(ax, 0,0,0,'r');
 obs_zono = patch(ax, 0,0,0, 'm');
+obs_zono_box = patch(ax, 0,0,0, 'w');
 traversed_path = plot(ax, 0,0, 'k', 'LineWidth', 8);
     
    
@@ -61,7 +63,7 @@ traversed_path = plot(ax, 0,0, 'k', 'LineWidth', 8);
 %% Add the ground + textures 
 ground = 1000*ones(100,100)-1000;
 groundSurf = surf(linspace(-70,70,size(ground,1)),linspace(-70,70,size(ground,2)),ground);
-groundSurf.FaceColor = [1,1,1];
+groundSurf.FaceColor = [0.8,0.8,0.8];
 set(groundSurf, 'edgecolor', 'none')
 % texture = imread('Mcity.png');
 %     texture = imread('Reduced_Resolution_Map.bmp');
@@ -100,8 +102,7 @@ camlight('headlight');
 
 sub = subscribers;
 cb = callbacks(0,0,0,rot,pos,ax);
-
-setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point, obs_zono, traversed_path);
+setup_control(sub, cb, u_arrow, r_arrow, obs, way_points, initial_point, goal_point, obs_zono, traversed_path, obs_zono_box);
 
 % TF topic will be set up by default, all other topics must be turned on
 % manuallyu
@@ -109,11 +110,6 @@ sub.sub_tf = rossubscriber('/tf', @cb.tf_cb, 'DataFormat', 'struct');
 sub.sub_tf.NewMessageFcn = {@cb.tf_cb, car, vert, u_arrow, r_arrow, traversed_path};
 disp('started subscriber for /tf');
 
-try
-    sub.sub_tf = rossubscriber('/mocap', @cb.mocap_cb, 'DataFormat', 'struct');
-    sub.sub_tf.NewMessageFcn = {@cb.mocap_cb, car,vert, u_arrow, r_arrow};
-    disp('started subscriber for /mocap');
-end
     
 
 

@@ -135,8 +135,8 @@ classdef callbacks < handle
         
         
         function tf_cb(obj, src, msg, car,vert,u_arrow, r_arrow, traversed_path)
-            
-            FrameID = msg.Transforms.Header.FrameId;
+              
+            FrameID = msg.Transforms.Header.FrameId; 
             ChildFrameId = msg.Transforms.ChildFrameId;
 
             if FrameID == "map" && ChildFrameId == "base_link"
@@ -167,11 +167,18 @@ classdef callbacks < handle
 
                 % camera angle
                 if obj.FP_cam == 1
-                    FP_cam_pos = obj.pos(1:2)' - obj.rot(1:2, 1:2)*[0;20];
-                    campos(obj.ax, [FP_cam_pos', 10]);
+                    % First person camera. Not currently used
+%                     FP_cam_pos = obj.pos(1:2)' - obj.rot(1:2, 1:2)*[0;20];
+%                     campos(obj.ax, [FP_cam_pos', 10]);
+                    camtarget([0,-1,1]);
+                    campos([7,3,2])
+                    camva(33)
+                    
                 else
                     pos_diff = obj.pos(1:2) - current_campos(1:2);
                     campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
+                    camtarget(obj.ax, obj.pos); 
+                    camva(7); 
                 end
 
                 % Traveled path
@@ -179,8 +186,6 @@ classdef callbacks < handle
                     traversed_path.XData(end+1) = translation.X;
                     traversed_path.YData(end+1) = translation.Y;
                 end
-
-                camtarget(obj.ax, obj.pos); 
                 
                 %box drawing 
                 if obj.mark_box_toggle  
@@ -405,11 +410,11 @@ classdef callbacks < handle
 %             
 %             X = msg.Pose.Position.X;
 %             Y = msg.Pose.Position.Y;
-
-            if(obj.debug_counter > 7)
-                %vid 1
-                msg.WpX = msg.WpX + 0.5;
-            end
+% 
+%             if(obj.debug_counter > 7)
+%                 %vid 1
+% 
+%             end
 
             [vert,faces] = get_cross_points(msg.WpX,msg.WpY);
 
@@ -469,19 +474,22 @@ classdef callbacks < handle
             else
                 frs_to_use = obj.frs_file;
             end
-            if(obj.debug_counter == 8)
-                k_param = msg.KParam-10.5;
-                frs_indices(1) = 2;
-            end
             
-            if(obj.debug_counter == 9)
-                k_param = -1;
-                frs_indices(1) = 1;
-            end
+            
+%             if(obj.debug_counter == 8)
+%                 k_param = msg.KParam-10.5;
+%                 frs_indices(1) = 2;
+%             end
+%             
+%             if(obj.debug_counter == 9)
+%                 k_param = -1;
+%                 frs_indices(1) = 1;
+%             end
 
                
             obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, k_param}];
             if length(obj.queue(:,1)) > 1
+                figure(1)
                 delete(obj.frs_list);
                 curr_frs_info = obj.queue(1,:);
                 uvrk = [obj.u;obj.v;obj.r;curr_frs_info{4}];

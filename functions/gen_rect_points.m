@@ -14,7 +14,7 @@ function [verts, faces] = gen_rect_points(X, Y)
     Y_pt(end+1) = Y+length/2;
     Y_pt(end+1) = Y-length/2;
     
-    verts = [X_pt', Y_pt', repmat(0.01, 4, 1)];
+    verts = [X_pt', Y_pt', repmat(0.02, 4, 1)];
     faces = [1 2 3 4];
 
 end

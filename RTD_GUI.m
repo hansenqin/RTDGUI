@@ -2,7 +2,7 @@
 %Author: Hansen Qin
 %Email: qinh@umich.edu
 %Created: 8/16/2021
-%Modified: 3/26/2022
+%Modified: 5/12/2022
 %
 %Purpose: Visualize real time ROS data for the rover. Including obstacle
 %         zonotopes, goal point, initial point, waypoint, obstacle line segments,
@@ -33,6 +33,7 @@ ax.Visible = 'off';
 ax.Clipping = 'off';
 ax.Projection = 'perspective';
 cam_height = 60;
+camup([0 0.5 0.1]);
 axis([-100 100 -100 100 -100 100])
     
 %% Add the stl and prepare patches
@@ -55,7 +56,7 @@ way_points = patch(ax, 0,0,0,[0 0 0]);
 initial_point = patch(ax, 0,0,0,[0.7,0.7,0.7]);
 goal_point = patch(ax, 0,0,0,'r');
 obs_zono = patch(ax, 0,0,0, 'm');
-obs_zono_box = patch(ax, 0,0,0, 'w');
+obs_zono_box = patch(ax, 0,0,0, 'w','LineWidth', 3);
 traversed_path = plot(ax, 0,0, 'k', 'LineWidth', 8);
     
    

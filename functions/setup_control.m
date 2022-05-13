@@ -89,17 +89,17 @@ function cb2Changed(cbx, sub, cb, obs)
     end
 end
 
-function cb3Changed(cbx, sub, cb, goal_point)
+function cb3Changed(cbx, sub, cb, way_point)
     if cbx.Value
         try   
-            sub.sub_waypoints = rossubscriber('/matlab_plot_info', 'rover_control_msgs/MatlabPlotInfo', @(pub, msg) cb.plot_cb(msg, goal_point));
+            sub.sub_waypoints = rossubscriber('/matlab_plot_info', 'rover_control_msgs/MatlabPlotInfo', @(pub, msg) cb.plot_cb(msg, way_point));
             disp('started subscriber for /matlab_plot_info');    
         catch
             disp('/matlab_plot_info')
         end
     else
         sub.sub_waypoints = [];
-        disp('stopped subscriber for /matlab_plot_info');    
+        disp('stopped subscriber for /matlab_plot_info!!!');    
         
         obj.p_0.XData = [];
         obj.p_0.YData = [];
@@ -109,6 +109,9 @@ function cb3Changed(cbx, sub, cb, goal_point)
         
         obj.p_wp.XData = [];
         obj.p_wp.YData = [];
+        
+        way_point.XData = [];
+        way_point.YData = [];
         
         cb.plot_legend.Visible = 'off';
     end
@@ -185,7 +188,7 @@ function cb7Changed(cbx, cb)
     if cbx.Value
         try
             cb.recorder =  VideoWriter('curr_recording', 'MPEG-4'); % New
-            cb.recorder.FrameRate = 30;
+            cb.recorder.FrameRate = 15;
             cb.recorder.Quality = 100;
             open(cb.recorder);
             
@@ -194,7 +197,6 @@ function cb7Changed(cbx, cb)
             while(1)
                 frame = getframe(gcf);
                 writeVideo(cb.recorder,frame);
-                pause(0.01)
             end
         catch
             disp('cannot start recording')

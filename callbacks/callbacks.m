@@ -176,7 +176,7 @@ classdef callbacks < handle
                     
                 else
                     pos_diff = obj.pos(1:2) - current_campos(1:2);
-                    campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
+                    campos(obj.ax, current_campos+[(pos_diff+[0,15]) 0]);
                     camtarget(obj.ax, obj.pos); 
                     camva(7); 
                 end
@@ -411,34 +411,13 @@ classdef callbacks < handle
 %             X = msg.Pose.Position.X;
 %             Y = msg.Pose.Position.Y;
 % 
-%             if(obj.debug_counter > 7)
-%                 %vid 1
-% 
-%             end
+            if(obj.debug_counter < 8)
+                %vid 1
+                [vert,faces] = get_cross_points(msg.WpX,msg.WpY);
 
-            [vert,faces] = get_cross_points(msg.WpX,msg.WpY);
-
-            way_points.Vertices = vert;
-            way_points.Faces = faces;
-
-            
-%             %curr executing path
-%             rob_path = path_msg_tmp; % msg.FullRobPath;
-% 
-%             num_path_pts = length(rob_path.Poses);
-%             path_pts = zeros(2, num_path_pts);
-%             
-%             for i=1:length(obj.path_list)
-%                 obj.path_list(i).XData = [];
-%                 obj.path_list(i).YData = [];
-%             end
-%             
-%             for i = 1:num_path_pts
-%                 pos_i = rob_path.Poses(i).Pose.Position;
-%                 path_pts(:, i) = [pos_i.X; pos_i.Y];
-%             end
-%             obj.path_list = plot(path_pts(1,:), path_pts(2,:), 'k--', 'LineWidth', 2, 'DisplayName', 'Path');
-%             
+                way_points.Vertices = vert;
+                way_points.Faces = faces;
+            end
             
             %legends
 %             if obj.curr_pos_and_predicted_pos_toggle
@@ -476,10 +455,9 @@ classdef callbacks < handle
             end
             
             
-%             if(obj.debug_counter == 8)
-%                 k_param = msg.KParam-10.5;
-%                 frs_indices(1) = 2;
-%             end
+            if(obj.debug_counter > 7)
+                frs_indices(1) = 1;
+            end
 %             
 %             if(obj.debug_counter == 9)
 %                 k_param = -1;

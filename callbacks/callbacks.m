@@ -455,8 +455,12 @@ classdef callbacks < handle
             end
             
             
-            if(obj.debug_counter > 7)
-                frs_indices(1) = 1;
+            if(obj.debug_counter > 6)
+                frs_to_use = obj.frs_low_file;
+                frs_indices(1) = 6;
+                frs_indices(2) = 1;
+                frs_indices(3) = 1;
+                msg.ManuType = 49;
             end
 %             
 %             if(obj.debug_counter == 9)
@@ -464,7 +468,7 @@ classdef callbacks < handle
 %                 frs_indices(1) = 1;
 %             end
 
-               
+            msg.ManuType
             obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, k_param}];
             if length(obj.queue(:,1)) > 1
                 figure(1)

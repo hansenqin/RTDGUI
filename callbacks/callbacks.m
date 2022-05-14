@@ -411,13 +411,13 @@ classdef callbacks < handle
 %             X = msg.Pose.Position.X;
 %             Y = msg.Pose.Position.Y;
 % 
-            if(obj.debug_counter < 8)
+%             if(obj.debug_counter < 8)
                 %vid 1
                 [vert,faces] = get_cross_points(msg.WpX,msg.WpY);
 
                 way_points.Vertices = vert;
                 way_points.Faces = faces;
-            end
+%             end
             
             %legends
 %             if obj.curr_pos_and_predicted_pos_toggle
@@ -455,13 +455,13 @@ classdef callbacks < handle
             end
             
             
-%             if(obj.debug_counter > 6)
-%                 frs_to_use = obj.frs_low_file;
-%                 frs_indices(1) = 6;
-%                 frs_indices(2) = 1;
-%                 frs_indices(3) = 1;
-%                 msg.ManuType = 49;
-%             end
+            if(obj.debug_counter == 13)
+                frs_to_use = obj.frs_low_file;
+                frs_indices(1) = 3;
+                frs_indices(2) = 1;
+                frs_indices(3) = 1;
+                msg.ManuType = 49;
+            end
 %             
 %             if(obj.debug_counter == 9)
 %                 k_param = -1;

@@ -176,7 +176,7 @@ classdef callbacks < handle
                     
                 else
                     pos_diff = obj.pos(1:2) - current_campos(1:2);
-                    campos(obj.ax, current_campos+[(pos_diff+[0,15]) 0]);
+                    campos(obj.ax, current_campos+[(pos_diff-[0,15]) 0]);
                     camtarget(obj.ax, obj.pos); 
                     camva(7); 
                 end
@@ -411,13 +411,17 @@ classdef callbacks < handle
 %             X = msg.Pose.Position.X;
 %             Y = msg.Pose.Position.Y;
 % 
-%             if(obj.debug_counter < 8)
-                %vid 1
+            if obj.debug_counter > 10
+                [vert,faces] = get_cross_points(msg.WpX-0.3,msg.WpY);
+                disp("HERE")
+                way_points.Vertices = vert;
+                way_points.Faces = faces;
+            else 
                 [vert,faces] = get_cross_points(msg.WpX,msg.WpY);
 
                 way_points.Vertices = vert;
                 way_points.Faces = faces;
-%             end
+            end
             
             %legends
 %             if obj.curr_pos_and_predicted_pos_toggle
@@ -432,7 +436,7 @@ classdef callbacks < handle
         function frs_cb(obj, msg)
             state_pred = [msg.PredX; msg.PredY; msg.PredH; ...
                           msg.PredU; msg.PredV; msg.PredR];
-            frs_indices = [msg.U0Idx, msg.Idx0, msg.Idx1]
+            frs_indices = [msg.U0Idx, msg.Idx0, msg.Idx1];
             obj.debug_counter = obj.debug_counter+1;
             obj.debug_counter
             k_param = msg.KParam
@@ -455,20 +459,30 @@ classdef callbacks < handle
             end
             
             
-%             if(obj.debug_counter == 13)
-%                 frs_to_use = obj.frs_low_file;
+%             if(obj.debug_counter == 8)
+% %                 frs_to_use = obj.frs_low_file;
 %                 frs_indices(1) = 3;
-%                 frs_indices(2) = 1;
-%                 frs_indices(3) = 1;
+%                 k_param = -10;
+% %                 frs_indices(2) = 1;
+% %                 frs_indices(3) = 1;
 %                 msg.ManuType = 49;
 %             end
+%             
+%             
+            if(obj.debug_counter == 11)
+%                 frs_to_use = obj.frs_low_file;
+                frs_indices(1) = 3;
+                frs_indices(2) = 1;
+                frs_indices(3) = 1;
+                msg.ManuType = 49;
+            end
 %             
 %             if(obj.debug_counter == 9)
 %                 k_param = -1;
 %                 frs_indices(1) = 1;
 %             end
 
-            msg.ManuType
+            msg.ManuType;
             obj.queue = [obj.queue; {frs_to_use, msg.ManuType, frs_indices, k_param}];
             if length(obj.queue(:,1)) > 1
                 figure(1)
